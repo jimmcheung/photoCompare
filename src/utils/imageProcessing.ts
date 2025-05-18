@@ -33,6 +33,7 @@ export const processImageFile = async (file: File): Promise<ImageInfo> => {
     // 构建图像信息对象
     return {
       id: `${Date.now()}-${Math.random().toString(36).substring(2)}-${file.name}`,
+      file,
       url,
       name: file.name,
       exif: {
@@ -54,6 +55,7 @@ export const processImageFile = async (file: File): Promise<ImageInfo> => {
     // 创建一个简单的错误对象
     return {
       id: `error-${Date.now()}-${file.name}`,
+      file,
       url: '',
       name: file.name,
       exif: {

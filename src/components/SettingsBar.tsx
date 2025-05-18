@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useImageStore, ImageInfo } from '../stores/imageStore';
+import { processImageFile } from '../utils/imageProcessing';
 
 interface ExifSettingsPanelProps {
   isOpen: boolean;
@@ -131,37 +132,10 @@ const SettingsBar: React.FC = () => {
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
-    
     const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
-
-    // 先清空当前图片
     clearImages();
-    
-    const processedImages = await Promise.all(
-      imageFiles.map(async (file) => {
-        const url = URL.createObjectURL(file);
-        const imageInfo: ImageInfo = {
-          id: `${Date.now()}-${Math.random().toString(36).substring(2)}-${file.name}`,
-          url,
-          name: file.name,
-          exif: {
-            FileName: file.name,
-            Resolution: '',
-            Make: 'Unknown',
-            Model: 'Unknown',
-            LensModel: 'Unknown',
-            FocalLength: 0,
-            FNumber: 0,
-            ExposureTime: '0',
-            ISO: 0,
-            DateTimeOriginal: file.lastModified.toString(),
-          }
-        };
-        return imageInfo;
-      })
-    );
-
+    const processedImages = await Promise.all(imageFiles.map(processImageFile));
     addImages(processedImages);
   };
 
@@ -250,38 +224,13 @@ const SettingsBar: React.FC = () => {
           accept="image/*"
           className="hidden"
           id="add-image-input"
-          onChange={(e) => {
+          onChange={async (e) => {
             if (e.target.files) {
               const files = e.target.files;
               const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
               if (imageFiles.length === 0) return;
-              
-              Promise.all(
-                imageFiles.map(async (file) => {
-                  const url = URL.createObjectURL(file);
-                  const imageInfo: ImageInfo = {
-                    id: `${Date.now()}-${Math.random().toString(36).substring(2)}-${file.name}`,
-                    url,
-                    name: file.name,
-                    exif: {
-                      FileName: file.name,
-                      Resolution: '',
-                      Make: 'Unknown',
-                      Model: 'Unknown',
-                      LensModel: 'Unknown',
-                      FocalLength: 0,
-                      FNumber: 0,
-                      ExposureTime: '0',
-                      ISO: 0,
-                      DateTimeOriginal: file.lastModified.toString(),
-                    }
-                  };
-                  return imageInfo;
-                })
-              ).then(newImages => {
-                addImages(newImages);
-              });
-              
+              const newImages = await Promise.all(imageFiles.map(processImageFile));
+              addImages(newImages);
               e.target.value = '';
             }
           }}

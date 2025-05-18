@@ -1,6 +1,6 @@
 export interface ImageInfo {
   id: string;
-  file: File;
+  file?: File;
   url: string;
   exif: ExifData;
 }

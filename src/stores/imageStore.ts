@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export interface ImageInfo {
   id: string;
+  file?: File;
   url: string;
   name: string;
   exif: {
