@@ -474,7 +474,7 @@ const AnnotationToolbar: React.FC = () => {
             style={{
               ...btnBase,
               background: '#fff',
-              boxShadow: '0 0 0 3px #007AFF66',
+              boxShadow: (!PRESET_COLORS.includes(annotationColor) && customColor === annotationColor) || showPalette ? '0 0 0 3px #007AFF66' : 'none',
               outline: 'none',
               position: 'relative',
               display: 'flex',
@@ -485,9 +485,9 @@ const AnnotationToolbar: React.FC = () => {
             }}
             onClick={() => setShowPalette(v => !v)}
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 0 3px #007AFF66'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+            onMouseLeave={e => e.currentTarget.style.boxShadow = (!PRESET_COLORS.includes(annotationColor) && customColor === annotationColor) || showPalette ? '0 0 0 3px #007AFF66' : 'none'}
             onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 3px #007AFF66'}
-            onBlur={e => e.currentTarget.style.boxShadow = 'none'}
+            onBlur={e => e.currentTarget.style.boxShadow = (!PRESET_COLORS.includes(annotationColor) && customColor === annotationColor) || showPalette ? '0 0 0 3px #007AFF66' : 'none'}
             title="更多颜色"
           >
             <span style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'}}>
