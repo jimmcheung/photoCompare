@@ -8,6 +8,8 @@ import './styles/demo-mode.css';
 import './styles/utils.css';
 // 导入二维码图片
 import placeholderQRCode from '/placeholder-qrcode.jpeg';
+import { useAnnotationStore } from './stores/annotationStore';
+import AnnotationToolbar from './components/AnnotationToolbar';
 
 // 移动端侧边栏组件
 const MobileSidebar: React.FC<{
@@ -105,12 +107,12 @@ const MobileSidebar: React.FC<{
                 className="flex items-center space-x-1 text-sky-500"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/>
+                  <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/>
                 </svg>
                 <span>@Jim超爱玩</span>
               </a>
               <span>•</span>
-              <span>v1.0.1</span>
+              <span>v1.0.2</span>
             </div>
           </div>
         </div>
@@ -126,6 +128,7 @@ const App: React.FC = () => {
   const [showReward, setShowReward] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAnnotateMode, setAnnotateMode, setToolbarVisible } = useAnnotationStore();
 
   // 设置深色模式的 HTML 类
   useEffect(() => {
@@ -177,6 +180,11 @@ const App: React.FC = () => {
       }
     }
   }, [demoMode, toggleDemoMode]);
+
+  // 保证标注开关与工具栏显示联动
+  useEffect(() => {
+    setToolbarVisible(isAnnotateMode);
+  }, [isAnnotateMode, setToolbarVisible]);
 
   return (
     <div className={`h-screen overflow-hidden ${darkMode ? 'bg-black' : 'bg-gray-50'}`}>
@@ -244,36 +252,71 @@ const App: React.FC = () => {
 
             {/* 同步缩放开关 - 仅在有图片时显示 */}
             {images.length > 0 && (
-              <div className={`px-4 py-1.5 rounded-full backdrop-blur-md transition-all duration-200 ${
-                darkMode 
-                  ? 'bg-gray-900 text-white' 
-                  : 'bg-sky-500/10 text-gray-900'
-              } flex items-center desktop-only`}>
-                <span className={`text-sm font-medium mr-3`}>同步</span>
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={syncZoom}
-                    onChange={toggleSyncZoom}
-                    className="sr-only peer"
-                  />
-                  <div className={`relative w-14 h-7 rounded-full transition-all duration-200 
-                    ${syncZoom 
-                      ? 'bg-sky-500' 
-                      : darkMode 
-                        ? 'bg-gray-800' 
-                        : 'bg-gray-300'} 
-                    cursor-pointer
-                    after:content-[''] after:absolute after:top-1 after:left-1 
-                    after:bg-white after:rounded-full after:h-5 after:w-5 
-                    after:shadow-md after:transition-all
-                    ${syncZoom ? 'after:translate-x-7' : 'after:translate-x-0'}
-                    peer-focus:ring-2 peer-focus:ring-sky-400 peer-focus:ring-opacity-50`}
-                  >
-                    <span className="sr-only">同步操作</span>
-                  </div>
-                </label>
-              </div>
+              <>
+                <div className={`px-4 py-1.5 rounded-full backdrop-blur-md transition-all duration-200 ${
+                  darkMode 
+                    ? 'bg-gray-900 text-white' 
+                    : 'bg-sky-500/10 text-gray-900'
+                } flex items-center desktop-only`}>
+                  <span className={`text-sm font-medium mr-3`}>同步</span>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={syncZoom}
+                      onChange={toggleSyncZoom}
+                      className="sr-only peer"
+                    />
+                    <div className={`relative w-14 h-7 rounded-full transition-all duration-200 
+                      ${syncZoom 
+                        ? 'bg-sky-500' 
+                        : darkMode 
+                          ? 'bg-gray-800' 
+                          : 'bg-gray-300'} 
+                      cursor-pointer
+                      after:content-[''] after:absolute after:top-1 after:left-1 
+                      after:bg-white after:rounded-full after:h-5 after:w-5 
+                      after:shadow-md after:transition-all
+                      ${syncZoom ? 'after:translate-x-7' : 'after:translate-x-0'}
+                      peer-focus:ring-2 peer-focus:ring-sky-400 peer-focus:ring-opacity-50`}
+                    >
+                      <span className="sr-only">同步操作</span>
+                    </div>
+                  </label>
+                </div>
+                {/* 标注开关 */}
+                <div className={`px-4 py-1.5 rounded-full backdrop-blur-md transition-all duration-200 ml-2 ${
+                  isAnnotateMode
+                    ? 'bg-sky-600 text-white' 
+                    : darkMode 
+                      ? 'bg-gray-900 text-white' 
+                      : 'bg-sky-500/10 text-gray-900'
+                } flex items-center desktop-only`}>
+                  <span className={`text-sm font-medium mr-3`}>标注</span>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isAnnotateMode}
+                      onChange={e => setAnnotateMode(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className={`relative w-14 h-7 rounded-full transition-all duration-200 
+                      ${isAnnotateMode 
+                        ? 'bg-sky-500' 
+                        : darkMode 
+                          ? 'bg-gray-800' 
+                          : 'bg-gray-300'} 
+                      cursor-pointer
+                      after:content-[''] after:absolute after:top-1 after:left-1 
+                      after:bg-white after:rounded-full after:h-5 after:w-5 
+                      after:shadow-md after:transition-all
+                      ${isAnnotateMode ? 'after:translate-x-7' : 'after:translate-x-0'}
+                      peer-focus:ring-2 peer-focus:ring-sky-400 peer-focus:ring-opacity-50`}
+                    >
+                      <span className="sr-only">标注开关</span>
+                    </div>
+                  </label>
+                </div>
+              </>
             )}
           </div>
 
@@ -284,6 +327,8 @@ const App: React.FC = () => {
         {/* 主要内容区域 */}
         <main className="h-full pt-16">
           {images.length === 0 && !useImageStore.getState().hasViewedImages ? <ImageUploader /> : <ImageViewer images={images} />}
+          {/* 标注工具栏 */}
+          <AnnotationToolbar />
         </main>
 
         {/* 底部版权信息 */}
@@ -303,14 +348,14 @@ const App: React.FC = () => {
                 className="flex items-center space-x-1.5 text-sm transition-all duration-300 hover:text-sky-500"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/>
+                  <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/>
                 </svg>
                 <span>@Jim超爱玩</span>
               </a>
               <span className="text-sm opacity-60">•</span>
               <span className="text-sm opacity-60">© {new Date().getFullYear()}</span>
               <span className="text-sm opacity-60">•</span>
-              <span className="text-sm opacity-60">v1.0.1</span>
+              <span className="text-sm opacity-60">v1.0.2</span>
               <span className="text-sm opacity-60">•</span>
               <button
                 className="text-sm text-sky-500 hover:underline focus:outline-none focus:underline ml-2"
@@ -353,7 +398,7 @@ const App: React.FC = () => {
               
               <div className="mb-4">
                 <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">版本信息</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">当前版本: v1.0.1</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">当前版本: v1.0.2</p>
               </div>
               
               <div className="mb-4">
@@ -370,7 +415,7 @@ const App: React.FC = () => {
                 <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">链接</h3>
                 <div className="space-y-2">
                   <a 
-                    href="https://github.com/user/photoCompare" 
+                    href="https://github.com/jimmcheung/photoCompare" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="flex items-center space-x-2 text-sm text-sky-600 dark:text-sky-400 hover:underline"
@@ -387,7 +432,7 @@ const App: React.FC = () => {
                     className="flex items-center space-x-2 text-sm text-sky-600 dark:text-sky-400 hover:underline"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/>
+                      <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/>
                     </svg>
                     <span>B站: @Jim超爱玩</span>
                   </a>

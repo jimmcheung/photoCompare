@@ -118,4 +118,12 @@
   .sidebar-backdrop {
     display: none !important;
   }
+}
+
+.annotation-toolbar-divider {
+  width: 1.5px;
+  height: 36px;
+  background: rgba(120,140,180,0.13);
+  border-radius: 8px;
+  margin: 0 18px;
 } 

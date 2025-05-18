@@ -3,6 +3,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import ExifPanel from './ExifPanel';
 import { ImageInfo, useImageStore } from '../stores/imageStore';
 import { processImageFile } from '../utils/imageProcessing';
+import { useAnnotationStore } from '../stores/annotationStore';
 
 interface Transform {
   scale: number;
@@ -17,11 +18,23 @@ interface Props {
 const ImageViewer: React.FC<Props> = ({ images = [] }) => {
   const { darkMode, syncZoom, demoMode } = useSettingsStore();
   const { removeImage, addImages } = useImageStore();
+  const {
+    isAnnotateMode, annotationTool, annotationColor, annotationStrokeWidth, annotations, addAnnotation, setAnnotations, undo, redo,
+    selectedAnnotationId, setSelectedAnnotationId, drawing, setDrawing
+  } = useAnnotationStore();
   const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const imageRefs = useRef<(HTMLImageElement | null)[]>([]);
   const [transforms, setTransforms] = useState<Transform[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // 标注拖动相关状态
+  const [draggingAnn, setDraggingAnn] = useState<null | {
+    imgIdx: number;
+    annId: string;
+    start: [number, number];
+    last: [number, number];
+  }>(null);
+
   // 处理文件上传
   const handleFiles = async (files: FileList) => {
     if (!files.length) return;
@@ -89,20 +102,6 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
       });
     };
 
-    const handleMouseDown = (e: MouseEvent, index: number) => {
-      // 仅在点击图片时才开始拖动
-      if ((e.target as HTMLElement).tagName !== 'IMG') return;
-      
-      const currentTransform = transforms[index] || { scale: 1, x: 0, y: 0 };
-      dragState.current = {
-        isDragging: true,
-        currentIndex: index,
-        startX: e.clientX - currentTransform.x,
-        startY: e.clientY - currentTransform.y
-      };
-      e.preventDefault();
-    };
-
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragState.current.isDragging) return;
       const { currentIndex, startX, startY } = dragState.current;
@@ -119,27 +118,153 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
 
     const handleMouseUp = () => {
       dragState.current.isDragging = false;
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleMouseDown = (e: MouseEvent, index: number) => {
+      // 仅在点击图片时才开始拖动
+      if ((e.target as HTMLElement).tagName !== 'IMG') return;
+      const currentTransform = transforms[index] || { scale: 1, x: 0, y: 0 };
+      dragState.current = {
+        isDragging: true,
+        currentIndex: index,
+        startX: e.clientX - currentTransform.x,
+        startY: e.clientY - currentTransform.y
+      };
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      e.preventDefault();
     };
 
     containers.forEach((container, index) => {
       if (!container) return;
-      
       container.addEventListener('wheel', (e) => handleWheel(e, index), { passive: false });
       container.addEventListener('mousedown', (e) => handleMouseDown(e, index));
-      container.addEventListener('mousemove', handleMouseMove);
-      container.addEventListener('mouseup', handleMouseUp);
-      container.addEventListener('mouseleave', handleMouseUp);
     });
 
     return () => {
       containers.forEach((container) => {
         if (!container) return;
-        container.removeEventListener('mousemove', handleMouseMove);
-        container.removeEventListener('mouseup', handleMouseUp);
-        container.removeEventListener('mouseleave', handleMouseUp);
+        // 只需移除wheel和mousedown，mousemove/mouseup在window上移除
+        container.removeEventListener('wheel', (e) => handleWheel(e, 0));
+        container.removeEventListener('mousedown', (e) => handleMouseDown(e, 0));
       });
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [transforms, syncZoom]);
+
+  // 处理SVG绘制事件（仅用于新建标注）
+  const getSvgPoint = (e: React.PointerEvent) => {
+    const svg = e.currentTarget as SVGSVGElement;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return [0, 0] as [number, number];
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    return [svgPt.x, svgPt.y] as [number, number];
+  };
+
+  const handleSvgPointerDown = (e: React.PointerEvent, imgIdx: number) => {
+    if (!isAnnotateMode) return;
+    if (draggingAnn) return;
+    if (drawing && drawing.imageId !== images[imgIdx].id) return;
+    const [x, y] = getSvgPoint(e);
+    if (annotationTool === 'pen') {
+      setDrawing({ type: 'pen', start: [x, y], points: [x, y], imageId: images[imgIdx].id });
+    } else {
+      setDrawing({ type: annotationTool, start: [x, y], points: [x, y, x, y], imageId: images[imgIdx].id });
+    }
+  };
+
+  const handleSvgPointerMove = (e: React.PointerEvent, imgIdx: number) => {
+    if (!isAnnotateMode) return;
+    if (!drawing || drawing.imageId !== images[imgIdx].id) return;
+    if (draggingAnn && images[imgIdx].id === drawing.imageId) {
+      const [x, y] = getSvgPoint(e);
+      const dx = draggingAnn ? x - draggingAnn.last[0] : 0;
+      const dy = draggingAnn ? y - draggingAnn.last[1] : 0;
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+        if (syncZoom) {
+          images.forEach(img => {
+            if (selectedAnnotationId[img.id]) {
+              useAnnotationStore.getState().moveAnnotation(img.id, selectedAnnotationId[img.id]!, dx, dy);
+            }
+          });
+        } else {
+          useAnnotationStore.getState().moveAnnotation(images[imgIdx].id, draggingAnn.annId, dx, dy);
+        }
+        if (draggingAnn) setDraggingAnn({ ...draggingAnn, last: [x, y] });
+      }
+      return;
+    }
+    const [x, y] = getSvgPoint(e);
+    if (drawing && drawing.type === 'pen') {
+      setDrawing({ ...drawing, points: [...drawing.points, x, y] });
+    } else if (drawing) {
+      setDrawing({ ...drawing, points: [drawing.start[0], drawing.start[1], x, y] });
+    }
+  };
+
+  const handleSvgPointerUp = (e: React.PointerEvent, imgIdx: number) => {
+    if (!isAnnotateMode) return;
+    if (!drawing || drawing.imageId !== images[imgIdx].id) return;
+    if (draggingAnn) {
+      setDraggingAnn(null);
+      return;
+    }
+    const ann = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      type: drawing.type,
+      points: drawing.points,
+      color: annotationColor,
+      strokeWidth: annotationStrokeWidth,
+    };
+    if (syncZoom) {
+      images.forEach(img => addAnnotation(img.id, ann));
+    } else {
+      addAnnotation(images[imgIdx].id, ann);
+    }
+    setDrawing(null);
+  };
+
+  // 撤销/重做快捷键
+  useEffect(() => {
+    if (!isAnnotateMode) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        // 撤销当前图片
+        if (images.length > 0) undo(images[0].id);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        // 重做当前图片
+        if (images.length > 0) redo(images[0].id);
+      }
+      // 删除选中标注
+      if ((e.key === 'Delete' || e.key === 'Backspace')) {
+        if (syncZoom) {
+          images.forEach(img => {
+            const annId = selectedAnnotationId[img.id];
+            if (annId) {
+              useAnnotationStore.getState().deleteAnnotation(img.id, annId);
+            }
+          });
+        } else {
+          // 仅删除当前图片的选中标注
+          images.forEach(img => {
+            const annId = selectedAnnotationId[img.id];
+            if (annId) {
+              useAnnotationStore.getState().deleteAnnotation(img.id, annId);
+            }
+          });
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAnnotateMode, images, undo, redo, selectedAnnotationId, syncZoom]);
 
   if (images.length === 0) {
     // 当没有图片时，重置 hasViewedImages 状态并返回 null
@@ -161,6 +286,57 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                 darkMode ? 'bg-black' : 'bg-white'
               } rounded-lg shadow-lg overflow-hidden relative group`}
             >
+              <svg
+                className="absolute inset-0 w-full h-full z-20"
+                style={{
+                  transform: `translate(${transforms[0]?.x || 0}px, ${transforms[0]?.y || 0}px) scale(${transforms[0]?.scale || 1})`,
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  transition: dragState.current.isDragging ? 'none' : 'transform 0.1s',
+                  pointerEvents: isAnnotateMode ? 'auto' : 'none',
+                }}
+                onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, 0)) : undefined}
+                onPointerMove={isAnnotateMode ? (e => handleSvgPointerMove(e, 0)) : undefined}
+                onPointerUp={isAnnotateMode ? (e => handleSvgPointerUp(e, 0)) : undefined}
+              >
+                {/* 已有标注 */}
+                {(annotations[images[0].id] || []).map(ann => {
+                  const isSelected = selectedAnnotationId[images[0].id] === ann.id;
+                  if (ann.type === 'rect') {
+                    const [x1, y1, x2, y2] = ann.points;
+                    return <rect key={ann.id} x={Math.min(x1, x2)} y={Math.min(y1, y2)} width={Math.abs(x2-x1)} height={Math.abs(y2-y1)} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none"
+                      onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, 0)) : undefined}
+                      style={isSelected ? { stroke: '#007AFF', strokeDasharray: '6 3', filter: 'drop-shadow(0 0 2px #007AFF88)' } : {}} />;
+                  }
+                  if (ann.type === 'ellipse') {
+                    const [x1, y1, x2, y2] = ann.points;
+                    return <ellipse key={ann.id} cx={(x1+x2)/2} cy={(y1+y2)/2} rx={Math.abs(x2-x1)/2} ry={Math.abs(y2-y1)/2} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none"
+                      onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, 0)) : undefined}
+                      style={isSelected ? { stroke: '#007AFF', strokeDasharray: '6 3', filter: 'drop-shadow(0 0 2px #007AFF88)' } : {}} />;
+                  }
+                  if (ann.type === 'pen') {
+                    const pts = ann.points;
+                    const d = pts.length >= 4 ? `M${pts[0]},${pts[1]} ` + pts.slice(2).map((v,i) => i%2===0?`L${pts[i+2]},${pts[i+3]}`:'').join(' ') : '';
+                    return <path key={ann.id} d={d} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round" strokeLinecap="round"
+                      onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, 0)) : undefined}
+                      style={isSelected ? { stroke: '#007AFF', strokeDasharray: '6 3', filter: 'drop-shadow(0 0 2px #007AFF88)' } : {}} />;
+                  }
+                  return null;
+                })}
+                {/* 正在绘制 */}
+                {drawing && (
+                  (syncZoom || images[0].id === drawing.imageId) && (
+                    drawing.type === 'rect' ? (
+                      <rect x={Math.min(drawing.start[0], drawing.points[2])} y={Math.min(drawing.start[1], drawing.points[3])} width={Math.abs(drawing.points[2]-drawing.start[0])} height={Math.abs(drawing.points[3]-drawing.start[1])} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" pointerEvents="none" />
+                    ) : drawing.type === 'ellipse' ? (
+                      <ellipse cx={(drawing.start[0]+drawing.points[2])/2} cy={(drawing.start[1]+drawing.points[3])/2} rx={Math.abs(drawing.points[2]-drawing.start[0])/2} ry={Math.abs(drawing.points[3]-drawing.start[1])/2} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" pointerEvents="none" />
+                    ) : drawing.type === 'pen' && drawing.points.length >= 4 ? (
+                      <path d={`M${drawing.points[0]},${drawing.points[1]} ` + drawing.points.slice(2).map((v,i) => i%2===0?`L${drawing.points[i+2]},${drawing.points[i+3]}`:'').join(' ')} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
+                    ) : null
+                  )
+                )}
+              </svg>
               {!demoMode && (
                 <button
                   onClick={() => {
@@ -217,6 +393,57 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                   darkMode ? 'bg-black' : 'bg-white'
                 } rounded-lg shadow-lg overflow-hidden relative group`}
               >
+                <svg
+                  className="absolute inset-0 w-full h-full z-20"
+                  style={{
+                    transform: `translate(${transforms[index]?.x || 0}px, ${transforms[index]?.y || 0}px) scale(${transforms[index]?.scale || 1})`,
+                    touchAction: 'none',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    transition: dragState.current.isDragging ? 'none' : 'transform 0.1s',
+                    pointerEvents: isAnnotateMode ? 'auto' : 'none',
+                  }}
+                  onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, index)) : undefined}
+                  onPointerMove={isAnnotateMode ? (e => handleSvgPointerMove(e, index)) : undefined}
+                  onPointerUp={isAnnotateMode ? (e => handleSvgPointerUp(e, index)) : undefined}
+                >
+                  {/* 已有标注 */}
+                  {(annotations[image.id] || []).map(ann => {
+                    const isSelected = selectedAnnotationId[image.id] === ann.id;
+                    if (ann.type === 'rect') {
+                      const [x1, y1, x2, y2] = ann.points;
+                      return <rect key={ann.id} x={Math.min(x1, x2)} y={Math.min(y1, y2)} width={Math.abs(x2-x1)} height={Math.abs(y2-y1)} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none"
+                        onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, index)) : undefined}
+                        style={isSelected ? { stroke: '#007AFF', strokeDasharray: '6 3', filter: 'drop-shadow(0 0 2px #007AFF88)' } : {}} />;
+                    }
+                    if (ann.type === 'ellipse') {
+                      const [x1, y1, x2, y2] = ann.points;
+                      return <ellipse key={ann.id} cx={(x1+x2)/2} cy={(y1+y2)/2} rx={Math.abs(x2-x1)/2} ry={Math.abs(y2-y1)/2} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none"
+                        onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, index)) : undefined}
+                        style={isSelected ? { stroke: '#007AFF', strokeDasharray: '6 3', filter: 'drop-shadow(0 0 2px #007AFF88)' } : {}} />;
+                    }
+                    if (ann.type === 'pen') {
+                      const pts = ann.points;
+                      const d = pts.length >= 4 ? `M${pts[0]},${pts[1]} ` + pts.slice(2).map((v,i) => i%2===0?`L${pts[i+2]},${pts[i+3]}`:'').join(' ') : '';
+                      return <path key={ann.id} d={d} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round" strokeLinecap="round"
+                        onPointerDown={isAnnotateMode ? (e => handleSvgPointerDown(e, index)) : undefined}
+                        style={isSelected ? { stroke: '#007AFF', strokeDasharray: '6 3', filter: 'drop-shadow(0 0 2px #007AFF88)' } : {}} />;
+                    }
+                    return null;
+                  })}
+                  {/* 正在绘制 */}
+                  {drawing && (
+                    (syncZoom || image.id === drawing.imageId) && (
+                      drawing.type === 'rect' ? (
+                        <rect x={Math.min(drawing.start[0], drawing.points[2])} y={Math.min(drawing.start[1], drawing.points[3])} width={Math.abs(drawing.points[2]-drawing.start[0])} height={Math.abs(drawing.points[3]-drawing.start[1])} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" pointerEvents="none" />
+                      ) : drawing.type === 'ellipse' ? (
+                        <ellipse cx={(drawing.start[0]+drawing.points[2])/2} cy={(drawing.start[1]+drawing.points[3])/2} rx={Math.abs(drawing.points[2]-drawing.start[0])/2} ry={Math.abs(drawing.points[3]-drawing.start[1])/2} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" pointerEvents="none" />
+                      ) : drawing.type === 'pen' && drawing.points.length >= 4 ? (
+                        <path d={`M${drawing.points[0]},${drawing.points[1]} ` + drawing.points.slice(2).map((v,i) => i%2===0?`L${drawing.points[i+2]},${drawing.points[i+3]}`:'').join(' ')} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
+                      ) : null
+                    )
+                  )}
+                </svg>
                 {!demoMode && (
                   <button
                     onClick={() => {
