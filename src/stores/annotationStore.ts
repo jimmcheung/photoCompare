@@ -29,6 +29,8 @@ export interface AnnotationStore {
   setStrokeWidth: (w: number) => void;
   annotationColor: string;
   setAnnotationColor: (c: string) => void;
+  annotationFontSize: number;
+  setAnnotationFontSize: (size: number) => void;
   annotations: Record<string, Annotation[]>; // imageId -> Annotation[]
   addAnnotation: (imageId: string, ann: Annotation) => void;
   setAnnotations: (imageId: string, anns: Annotation[]) => void;
@@ -49,8 +51,8 @@ export interface AnnotationStore {
     imageId: string;
   };
   setDrawing: (drawing: AnnotationStore['drawing']) => void;
-  editingTextId?: string | null;
-  setEditingTextId?: (id: string | null) => void;
+  editingTextId: string | null;
+  setEditingTextId: (id: string | null) => void;
 }
 
 export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
@@ -65,6 +67,8 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
   setStrokeWidth: (w) => set({ annotationStrokeWidth: w }),
   annotationColor: '#FF0000',
   setAnnotationColor: (c) => set({ annotationColor: c }),
+  annotationFontSize: 18,
+  setAnnotationFontSize: (size) => set({ annotationFontSize: size }),
   annotations: {},
   addAnnotation: (imageId, ann) => set((s) => ({
     annotations: {
@@ -98,9 +102,10 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
       newPoints = [ann.points[0]+dx, ann.points[1]+dy, ann.points[2]+dx, ann.points[3]+dy];
     } else if (ann.type === 'pen') {
       newPoints = ann.points.map((v,i) => i%2===0 ? v+dx : v+dy);
+    } else if (ann.type === 'text') {
+      newPoints = [ann.points[0]+dx, ann.points[1]+dy];
     }
-    // 撤销栈
-    get().pushUndo(imageId, anns);
+    // 移除pushUndo，交由外部控制
     const newAnns = [...anns];
     newAnns[idx] = { ...ann, points: newPoints };
     return {
@@ -124,7 +129,7 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
   pushUndo: (imageId, anns) => set((s) => ({
     undoStack: {
       ...s.undoStack,
-      [imageId]: [...(s.undoStack[imageId] || []), anns],
+      [imageId]: [...(s.undoStack[imageId] || []), JSON.parse(JSON.stringify(anns))],
     },
     redoStack: {
       ...s.redoStack,
