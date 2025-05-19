@@ -123,7 +123,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
     const handleWheel = (e: WheelEvent, index: number) => {
       e.preventDefault();
       const currentTransform = transforms[index] || { scale: 1, x: 0, y: 0 };
-      const delta = e.deltaY * -0.01;
+      const delta = e.deltaY * -0.003;
       const newScale = Math.max(0.1, Math.min(10, currentTransform.scale + delta));
 
       updateTransform(index, {
