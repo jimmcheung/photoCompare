@@ -140,7 +140,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragState.current.isDragging) return;
       const { currentIndex, startX, startY } = dragState.current;
-      const currentTransform = transforms[currentIndex] || { scale: 1, x: 0, y: 0 };
+      const currentTransform = transformsRef.current[currentIndex] || { scale: 1, x: 0, y: 0 };
 
       const newTransform = {
         ...currentTransform,
@@ -148,7 +148,12 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
         y: e.clientY - startY,
       };
 
-      updateTransform(currentIndex, newTransform);
+      // 拖动时只更新当前图片
+      setTransforms(prev => {
+        const newTransforms = [...prev];
+        newTransforms[currentIndex] = newTransform;
+        return newTransforms;
+      });
     };
 
     const handleMouseUp = () => {
