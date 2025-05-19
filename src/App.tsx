@@ -355,7 +355,7 @@ const App: React.FC = () => {
               <span className="text-sm opacity-60">•</span>
               <span className="text-sm opacity-60">© {new Date().getFullYear()}</span>
               <span className="text-sm opacity-60">•</span>
-              <span className="text-sm opacity-60">v1.0.3</span>
+              <span className="text-sm opacity-60">v1.1.0</span>
               <span className="text-sm opacity-60">•</span>
               <button
                 className="text-sm text-sky-500 hover:underline focus:outline-none focus:underline ml-2"

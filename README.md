@@ -73,6 +73,9 @@ npm run build
 1. 修改 `package.json` 中的版本号
 2. 运行 `npm run version` 更新页面显示
 
+## v1.1.0
+- 升级版本号至1.1.0，常规版本号升级，相关依赖和脚本已同步。
+
 ## 部署
 
 ### GitHub Pages
