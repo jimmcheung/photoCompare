@@ -148,12 +148,17 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
         y: e.clientY - startY,
       };
 
-      // 拖动时只更新当前图片
-      setTransforms(prev => {
-        const newTransforms = [...prev];
-        newTransforms[currentIndex] = newTransform;
-        return newTransforms;
-      });
+      if (syncZoom) {
+        // 同步时所有图片都应用同样的位移
+        setTransforms(prev => prev.map(() => newTransform));
+      } else {
+        // 只移动当前图片
+        setTransforms(prev => {
+          const newTransforms = [...prev];
+          newTransforms[currentIndex] = newTransform;
+          return newTransforms;
+        });
+      }
     };
 
     const handleMouseUp = () => {
