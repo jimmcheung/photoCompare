@@ -112,7 +112,7 @@ const MobileSidebar: React.FC<{
                 <span>@Jim超爱玩</span>
               </a>
               <span>•</span>
-              <span>v1.0.2</span>
+              <span className="text-sm opacity-60">v1.1.0</span>
             </div>
           </div>
         </div>
