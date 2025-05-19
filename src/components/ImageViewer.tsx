@@ -56,6 +56,9 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
     transformsRef.current = transforms;
   }, [transforms]);
 
+  const syncZoomRef = useRef(syncZoom);
+  useEffect(() => { syncZoomRef.current = syncZoom; }, [syncZoom]);
+
   // 解析图片分辨率，初始化imgSize和viewBox
   useEffect(() => {
     if (images.length === 1) {
@@ -111,12 +114,10 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
   // 统一的 updateTransform
   const updateTransform = (index: number, updater: (old: Transform) => Transform) => {
     setTransforms(prev => {
-      if (syncZoom) {
-        // 同步时所有图片都用当前图片的新 transform
+      if (syncZoomRef.current) {
         const newTransform = updater(prev[index] || { scale: 1, x: 0, y: 0 });
         return prev.map(() => ({ ...newTransform }));
       } else {
-        // 只更新当前图片
         const newTransforms = [...prev];
         newTransforms[index] = updater(prev[index] || { scale: 1, x: 0, y: 0 });
         return newTransforms;
@@ -127,16 +128,41 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
   useEffect(() => {
     const containers = containerRefs.current;
 
-    const handleWheel = (e: WheelEvent, index: number) => {
-      e.preventDefault();
-      updateTransform(index, (old) => {
-        const delta = e.deltaY * -0.003;
-        const newScale = Math.max(0.1, Math.min(10, old.scale + delta));
-        return { ...old, scale: newScale };
-      });
-    };
+    // 用于解绑的 handler map
+    const wheelHandlers: ((e: WheelEvent) => void)[] = [];
+    const mouseDownHandlers: ((e: MouseEvent) => void)[] = [];
 
-    const handleMouseMove = (e: MouseEvent) => {
+    containers.forEach((container, index) => {
+      if (!container) return;
+      const wheelHandler = (e: WheelEvent) => {
+        e.preventDefault();
+        updateTransform(index, (old) => {
+          const delta = e.deltaY * -0.01; // 恢复为原来的缩放灵敏度
+          const newScale = Math.max(0.1, Math.min(10, old.scale + delta));
+          return { ...old, scale: newScale };
+        });
+      };
+      const mouseDownHandler = (e: MouseEvent) => {
+        if ((e.target as HTMLElement).tagName !== 'IMG') return;
+        if (isAnnotateMode) return;
+        const currentTransform = transformsRef.current[index] || { scale: 1, x: 0, y: 0 };
+        dragState.current = {
+          isDragging: true,
+          currentIndex: index,
+          startX: e.clientX - currentTransform.x,
+          startY: e.clientY - currentTransform.y
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        e.preventDefault();
+      };
+      container.addEventListener('wheel', wheelHandler, { passive: false });
+      container.addEventListener('mousedown', mouseDownHandler);
+      wheelHandlers[index] = wheelHandler;
+      mouseDownHandlers[index] = mouseDownHandler;
+    });
+
+    function handleMouseMove(e: MouseEvent) {
       if (!dragState.current.isDragging) return;
       const { currentIndex, startX, startY } = dragState.current;
       updateTransform(currentIndex, (old) => ({
@@ -144,47 +170,23 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
         x: e.clientX - startX,
         y: e.clientY - startY,
       }));
-    };
-
-    const handleMouseUp = () => {
+    }
+    function handleMouseUp() {
       dragState.current.isDragging = false;
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    const handleMouseDown = (e: MouseEvent, index: number) => {
-      // 仅在点击图片且未开启标注时才开始拖动
-      if ((e.target as HTMLElement).tagName !== 'IMG') return;
-      if (isAnnotateMode) return;
-      const currentTransform = transformsRef.current[index] || { scale: 1, x: 0, y: 0 };
-      dragState.current = {
-        isDragging: true,
-        currentIndex: index,
-        startX: e.clientX - currentTransform.x,
-        startY: e.clientY - currentTransform.y
-      };
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      e.preventDefault();
-    };
-
-    containers.forEach((container, index) => {
-      if (!container) return;
-      container.addEventListener('wheel', (e) => handleWheel(e, index), { passive: false });
-      container.addEventListener('mousedown', (e) => handleMouseDown(e, index));
-    });
+    }
 
     return () => {
-      containers.forEach((container) => {
+      containers.forEach((container, index) => {
         if (!container) return;
-        // 只需移除wheel和mousedown，mousemove/mouseup在window上移除
-        container.removeEventListener('wheel', (e) => handleWheel(e, 0));
-        container.removeEventListener('mousedown', (e) => handleMouseDown(e, 0));
+        if (wheelHandlers[index]) container.removeEventListener('wheel', wheelHandlers[index]);
+        if (mouseDownHandlers[index]) container.removeEventListener('mousedown', mouseDownHandlers[index]);
       });
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [transforms, syncZoom, isAnnotateMode]);
+  }, [isAnnotateMode, images.length]);
 
   // 处理SVG绘制事件（仅用于新建标注）
   const getSvgPoint = (e: React.PointerEvent) => {
@@ -361,7 +363,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
       const scaledDy = dy / scale;
       
       if (Math.abs(scaledDx) > 0.01 || Math.abs(scaledDy) > 0.01) {
-        if (syncZoom) {
+        if (syncZoomRef.current) {
           images.forEach(img => {
             if (selectedAnnotationId[img.id]) {
               useAnnotationStore.getState().moveAnnotation(img.id, selectedAnnotationId[img.id]!, scaledDx, scaledDy);
@@ -397,7 +399,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
       color: annotationColor,
       strokeWidth: annotationStrokeWidth,
     };
-    if (syncZoom) {
+    if (syncZoomRef.current) {
       images.forEach(img => addAnnotation(img.id, ann));
     } else {
       addAnnotation(images[imgIdx].id, ann);
@@ -419,7 +421,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
       }
       // 删除选中标注
       if ((e.key === 'Delete' || e.key === 'Backspace')) {
-        if (syncZoom) {
+        if (syncZoomRef.current) {
           images.forEach(img => {
             const annId = selectedAnnotationId[img.id];
             if (annId) {
@@ -439,7 +441,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAnnotateMode, images, undo, redo, selectedAnnotationId, syncZoom]);
+  }, [isAnnotateMode, images, undo, redo, selectedAnnotationId, syncZoomRef]);
 
   useEffect(() => {
     if (images.length === 0) {
@@ -460,7 +462,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
         text: textInputValue,
         fontSize: annotationFontSize,
       };
-      if (syncZoom) {
+      if (syncZoomRef.current) {
         // 同步模式下，在所有图片上添加相同的文字标注
         images.forEach(img => addAnnotation(img.id, newAnn));
       } else {
@@ -653,7 +655,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                           onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(images[0].id, ann.id);
                             // 拖动前保存撤销快照
                             if (annotationTool === 'move') {
-                              if (syncZoom) {
+                              if (syncZoomRef.current) {
                                 images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
                               } else {
                                 useAnnotationStore.getState().pushUndo(images[0].id, annotations[images[0].id] || []);
@@ -682,7 +684,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                               onPointerUp={e => {
                                 e.stopPropagation();
-                                if (syncZoom) {
+                                if (syncZoomRef.current) {
                                   images.forEach(img => deleteAnnotation(img.id, ann.id));
                                 } else {
                                   deleteAnnotation(images[0].id, ann.id);
@@ -703,7 +705,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                           onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(images[0].id, ann.id);
                             // 拖动前保存撤销快照
                             if (annotationTool === 'move') {
-                              if (syncZoom) {
+                              if (syncZoomRef.current) {
                                 images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
                               } else {
                                 useAnnotationStore.getState().pushUndo(images[0].id, annotations[images[0].id] || []);
@@ -732,7 +734,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                               onPointerUp={e => {
                                 e.stopPropagation();
-                                if (syncZoom) {
+                                if (syncZoomRef.current) {
                                   images.forEach(img => deleteAnnotation(img.id, ann.id));
                                 } else {
                                   deleteAnnotation(images[0].id, ann.id);
@@ -760,7 +762,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                           onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(images[0].id, ann.id);
                             // 拖动前保存撤销快照
                             if (annotationTool === 'move') {
-                              if (syncZoom) {
+                              if (syncZoomRef.current) {
                                 images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
                               } else {
                                 useAnnotationStore.getState().pushUndo(images[0].id, annotations[images[0].id] || []);
@@ -789,7 +791,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                               onPointerUp={e => {
                                 e.stopPropagation();
-                                if (syncZoom) {
+                                if (syncZoomRef.current) {
                                   images.forEach(img => deleteAnnotation(img.id, ann.id));
                                 } else {
                                   deleteAnnotation(images[0].id, ann.id);
@@ -857,7 +859,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               cy={ty - h/2 - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                               onPointerUp={e => {
                                 e.stopPropagation();
-                                if (syncZoom) {
+                                if (syncZoomRef.current) {
                                   images.forEach(img => deleteAnnotation(img.id, ann.id));
                                 } else {
                                   deleteAnnotation(images[0].id, ann.id);
@@ -873,7 +875,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                 })}
                 {/* 正在绘制 */}
                 {drawing && (
-                  (syncZoom || images[0].id === drawing.imageId) && (
+                  (syncZoomRef.current || images[0].id === drawing.imageId) && (
                     (() => {
                       if (drawing.type === 'rect') {
                         return <rect x={Math.min(drawing.start[0], drawing.points[2])} y={Math.min(drawing.start[1], drawing.points[3])} width={Math.abs(drawing.points[2]-drawing.start[0])} height={Math.abs(drawing.points[3]-drawing.start[1])} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" pointerEvents="none" />;
@@ -945,7 +947,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                             onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(image.id, ann.id);
                               // 拖动前保存撤销快照
                               if (annotationTool === 'move') {
-                                if (syncZoom) {
+                                if (syncZoomRef.current) {
                                   images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
                                 } else {
                                   useAnnotationStore.getState().pushUndo(image.id, annotations[image.id] || []);
@@ -974,7 +976,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                                 cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                                 onPointerUp={e => {
                                   e.stopPropagation();
-                                  if (syncZoom) {
+                                  if (syncZoomRef.current) {
                                     images.forEach(img => deleteAnnotation(img.id, ann.id));
                                   } else {
                                     deleteAnnotation(image.id, ann.id);
@@ -995,7 +997,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                             onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(image.id, ann.id);
                               // 拖动前保存撤销快照
                               if (annotationTool === 'move') {
-                                if (syncZoom) {
+                                if (syncZoomRef.current) {
                                   images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
                                 } else {
                                   useAnnotationStore.getState().pushUndo(image.id, annotations[image.id] || []);
@@ -1024,7 +1026,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                                 cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                                 onPointerUp={e => {
                                   e.stopPropagation();
-                                  if (syncZoom) {
+                                  if (syncZoomRef.current) {
                                     images.forEach(img => deleteAnnotation(img.id, ann.id));
                                   } else {
                                     deleteAnnotation(image.id, ann.id);
@@ -1052,7 +1054,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                             onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(image.id, ann.id);
                               // 拖动前保存撤销快照
                               if (annotationTool === 'move') {
-                                if (syncZoom) {
+                                if (syncZoomRef.current) {
                                   images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
                                 } else {
                                   useAnnotationStore.getState().pushUndo(image.id, annotations[image.id] || []);
@@ -1081,7 +1083,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                                 cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                                 onPointerUp={e => {
                                   e.stopPropagation();
-                                  if (syncZoom) {
+                                  if (syncZoomRef.current) {
                                     images.forEach(img => deleteAnnotation(img.id, ann.id));
                                   } else {
                                     deleteAnnotation(image.id, ann.id);
@@ -1149,7 +1151,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                                 cy={ty - h/2 - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
                                 onPointerUp={e => {
                                   e.stopPropagation();
-                                  if (syncZoom) {
+                                  if (syncZoomRef.current) {
                                     images.forEach(img => deleteAnnotation(img.id, ann.id));
                                   } else {
                                     deleteAnnotation(image.id, ann.id);
@@ -1165,7 +1167,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                   })}
                   {/* 正在绘制 */}
                   {drawing && (
-                    (syncZoom || image.id === drawing.imageId) && (
+                    (syncZoomRef.current || image.id === drawing.imageId) && (
                       (() => {
                         if (drawing.type === 'rect') {
                           return <rect x={Math.min(drawing.start[0], drawing.points[2])} y={Math.min(drawing.start[1], drawing.points[3])} width={Math.abs(drawing.points[2]-drawing.start[0])} height={Math.abs(drawing.points[3]-drawing.start[1])} stroke={annotationColor} strokeWidth={annotationStrokeWidth} vectorEffect="non-scaling-stroke" fill="none" pointerEvents="none" />;
