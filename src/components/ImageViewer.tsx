@@ -51,6 +51,11 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
   const [pendingTextPoint, setPendingTextPoint] = useState<[number, number] | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
+  const transformsRef = useRef(transforms);
+  useEffect(() => {
+    transformsRef.current = transforms;
+  }, [transforms]);
+
   // 解析图片分辨率，初始化imgSize和viewBox
   useEffect(() => {
     if (images.length === 1) {
@@ -156,7 +161,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
       // 仅在点击图片且未开启标注时才开始拖动
       if ((e.target as HTMLElement).tagName !== 'IMG') return;
       if (isAnnotateMode) return;
-      const currentTransform = transforms[index] || { scale: 1, x: 0, y: 0 };
+      const currentTransform = transformsRef.current[index] || { scale: 1, x: 0, y: 0 };
       dragState.current = {
         isDragging: true,
         currentIndex: index,
