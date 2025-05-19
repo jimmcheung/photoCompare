@@ -1,7 +1,7 @@
 import React, { useRef, useState, useLayoutEffect } from 'react';
 import { useAnnotationStore, AnnotationType } from '../stores/annotationStore';
 import { PiPaintBrushDuotone, PiPaletteDuotone, PiTrashDuotone } from 'react-icons/pi';
-import { FiEdit2 } from 'react-icons/fi';
+import { FiEdit2, FiMove, FiType } from 'react-icons/fi';
 import { MdColorLens, MdOutlineDeleteOutline } from 'react-icons/md';
 import { HexColorPicker } from 'react-colorful';
 import ReactDOM from 'react-dom';
@@ -14,9 +14,11 @@ const TOOLBAR_MAX_WIDTH = 600;
 const TOOLBAR_RADIUS = 999;
 
 const TOOLS: { type: AnnotationType; icon: React.ReactNode; label: string }[] = [
+  { type: 'move', icon: <FiMove size={22} style={{display:'block'}} />, label: '选择/移动' },
   { type: 'rect', icon: <svg width="22" height="22" viewBox="0 0 22 22" style={{display:'block'}}><rect x="4" y="4" width="14" height="14" rx="7" stroke="currentColor" strokeWidth="2.2" fill="none"/></svg>, label: '矩形' },
   { type: 'ellipse', icon: <svg width="22" height="22" viewBox="0 0 22 22" style={{display:'block'}}><ellipse cx="11" cy="11" rx="7" ry="7" stroke="currentColor" strokeWidth="2.2" fill="none"/></svg>, label: '圆形' },
   { type: 'pen', icon: <FiEdit2 size={22} style={{display:'block'}} />, label: '画笔' },
+  { type: 'text', icon: <FiType size={22} style={{display:'block'}} />, label: '文字' },
 ];
 
 // 正弦波生成函数（振幅固定1.35px，画布高度为线宽+16）
@@ -291,63 +293,28 @@ const AnnotationToolbar: React.FC = () => {
     >
       <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            className="toolbar-btn"
-            onClick={() => setAnnotationTool('rect')}
-            style={{
-              ...btnBase,
-              background: annotationTool === 'rect' ? '#e6f0ff' : 'transparent',
-              color: annotationTool === 'rect' ? '#007AFF' : '#333',
-              boxShadow: annotationTool === 'rect' ? '0 0 0 3px #007AFF66' : undefined,
-            }}
-            onMouseEnter={e => e.currentTarget.style.boxShadow = annotationTool === 'rect' ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = annotationTool === 'rect' ? '0 0 0 3px #007AFF66' : 'none'}
-            onFocus={e => e.currentTarget.style.boxShadow = annotationTool === 'rect' ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
-            onBlur={e => e.currentTarget.style.boxShadow = annotationTool === 'rect' ? '0 0 0 3px #007AFF66' : 'none'}
-            title="矩形"
-          >
-            <span style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-              <svg width="22" height="22" viewBox="0 0 22 22" style={{display:'block'}}><rect x="4" y="4" width="14" height="14" rx="4" stroke="currentColor" strokeWidth="2.2" fill="none"/></svg>
-            </span>
-          </button>
-          <button
-            className="toolbar-btn"
-            onClick={() => setAnnotationTool('ellipse')}
-            style={{
-              ...btnBase,
-              background: annotationTool === 'ellipse' ? '#e6f0ff' : 'transparent',
-              color: annotationTool === 'ellipse' ? '#007AFF' : '#333',
-              boxShadow: annotationTool === 'ellipse' ? '0 0 0 3px #007AFF66' : undefined,
-            }}
-            onMouseEnter={e => e.currentTarget.style.boxShadow = annotationTool === 'ellipse' ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = annotationTool === 'ellipse' ? '0 0 0 3px #007AFF66' : 'none'}
-            onFocus={e => e.currentTarget.style.boxShadow = annotationTool === 'ellipse' ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
-            onBlur={e => e.currentTarget.style.boxShadow = annotationTool === 'ellipse' ? '0 0 0 3px #007AFF66' : 'none'}
-            title="圆形"
-          >
-            <span style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-              <svg width="22" height="22" viewBox="0 0 22 22" style={{display:'block'}}><ellipse cx="11" cy="11" rx="7" ry="7" stroke="currentColor" strokeWidth="2.2" fill="none"/></svg>
-            </span>
-          </button>
-          <button
-            className="toolbar-btn"
-            onClick={() => setAnnotationTool('pen')}
-            style={{
-              ...btnBase,
-              background: annotationTool === 'pen' ? '#e6f0ff' : 'transparent',
-              color: annotationTool === 'pen' ? '#007AFF' : '#333',
-              boxShadow: annotationTool === 'pen' ? '0 0 0 3px #007AFF66' : undefined,
-            }}
-            onMouseEnter={e => e.currentTarget.style.boxShadow = annotationTool === 'pen' ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = annotationTool === 'pen' ? '0 0 0 3px #007AFF66' : 'none'}
-            onFocus={e => e.currentTarget.style.boxShadow = annotationTool === 'pen' ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
-            onBlur={e => e.currentTarget.style.boxShadow = annotationTool === 'pen' ? '0 0 0 3px #007AFF66' : 'none'}
-            title="画笔"
-          >
-            <span style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-              <FiEdit2 size={22} style={{display:'block',margin:'auto'}} />
-            </span>
-          </button>
+          {TOOLS.map(tool => (
+            <button
+              key={tool.type}
+              className="toolbar-btn"
+              onClick={() => setAnnotationTool(tool.type)}
+              style={{
+                ...btnBase,
+                background: annotationTool === tool.type ? '#e6f0ff' : 'transparent',
+                color: annotationTool === tool.type ? '#007AFF' : '#333',
+                boxShadow: annotationTool === tool.type ? '0 0 0 3px #007AFF66' : undefined,
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = annotationTool === tool.type ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = annotationTool === tool.type ? '0 0 0 3px #007AFF66' : 'none'}
+              onFocus={e => e.currentTarget.style.boxShadow = annotationTool === tool.type ? '0 0 0 3px #007AFF66' : '0 0 0 3px #007AFF33'}
+              onBlur={e => e.currentTarget.style.boxShadow = annotationTool === tool.type ? '0 0 0 3px #007AFF66' : 'none'}
+              title={tool.label}
+            >
+              <span style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                {tool.icon}
+              </span>
+            </button>
+          ))}
         </div>
         <div className="annotation-toolbar-divider" style={{height: 36, width: 1.5, background: 'rgba(120,120,140,0.18)', margin: '0 16px'}} />
         <div style={{ display: 'flex', gap: 12 }}>

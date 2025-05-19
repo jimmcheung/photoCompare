@@ -1,13 +1,15 @@
 import { create } from 'zustand';
 
-export type AnnotationType = 'rect' | 'ellipse' | 'pen';
+export type AnnotationType = 'rect' | 'ellipse' | 'pen' | 'text' | 'move';
 
 export interface Annotation {
   id: string;
   type: AnnotationType;
-  points: number[]; // rect/ellipse: [x1, y1, x2, y2]，pen: [x1, y1, x2, y2, ...]
+  points: number[]; // rect/ellipse: [x1, y1, x2, y2]，pen: [x1, y1, x2, y2, ...]，text: [x, y]
   color: string;
   strokeWidth: number;
+  text?: string; // 仅text类型有
+  fontSize?: number; // 仅text类型有
 }
 
 export interface AnnotationToolbarState {
@@ -47,6 +49,8 @@ export interface AnnotationStore {
     imageId: string;
   };
   setDrawing: (drawing: AnnotationStore['drawing']) => void;
+  editingTextId?: string | null;
+  setEditingTextId?: (id: string | null) => void;
 }
 
 export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
@@ -169,4 +173,6 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
   }),
   drawing: null,
   setDrawing: (drawing) => set({ drawing }),
+  editingTextId: null,
+  setEditingTextId: (id) => set({ editingTextId: id }),
 })); 
