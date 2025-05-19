@@ -141,3 +141,5 @@ MIT License
 
 - Jim
 - B站：[@Jim超爱玩](https://space.bilibili.com/13818699)
+
+测试 GitHub Actions 自动部署
