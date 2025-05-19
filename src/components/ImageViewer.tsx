@@ -108,65 +108,42 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
     imageRefs.current = imageRefs.current.slice(0, images.length);
   }, [images.length]);
 
+  // 统一的 updateTransform
+  const updateTransform = (index: number, updater: (old: Transform) => Transform) => {
+    setTransforms(prev => {
+      if (syncZoom) {
+        // 同步时所有图片都用当前图片的新 transform
+        const newTransform = updater(prev[index] || { scale: 1, x: 0, y: 0 });
+        return prev.map(() => ({ ...newTransform }));
+      } else {
+        // 只更新当前图片
+        const newTransforms = [...prev];
+        newTransforms[index] = updater(prev[index] || { scale: 1, x: 0, y: 0 });
+        return newTransforms;
+      }
+    });
+  };
+
   useEffect(() => {
     const containers = containerRefs.current;
 
-    const updateTransform = (index: number, newTransform: Transform) => {
-      setTransforms(prev => {
-        const newTransforms = [...prev];
-        if (syncZoom) {
-          // 如果开启同步，则更新所有图片的变换
-          return prev.map(() => ({ ...newTransform }));
-        } else {
-          // 如果未开启同步，则只更新当前图片
-          newTransforms[index] = newTransform;
-          return newTransforms;
-        }
-      });
-    };
-
     const handleWheel = (e: WheelEvent, index: number) => {
       e.preventDefault();
-      const currentTransform = transformsRef.current[index] || { scale: 1, x: 0, y: 0 };
-      const delta = e.deltaY * -0.003;
-      const newScale = Math.max(0.1, Math.min(10, currentTransform.scale + delta));
-      const newTransform = { ...currentTransform, scale: newScale };
-
-      if (syncZoom) {
-        // 同步时所有图片都缩放
-        setTransforms(prev => prev.map(() => newTransform));
-      } else {
-        // 只缩放当前图片，其他图片完全不动
-        setTransforms(prev => {
-          const newTransforms = [...prev];
-          newTransforms[index] = newTransform;
-          return newTransforms;
-        });
-      }
+      updateTransform(index, (old) => {
+        const delta = e.deltaY * -0.003;
+        const newScale = Math.max(0.1, Math.min(10, old.scale + delta));
+        return { ...old, scale: newScale };
+      });
     };
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragState.current.isDragging) return;
       const { currentIndex, startX, startY } = dragState.current;
-      const currentTransform = transformsRef.current[currentIndex] || { scale: 1, x: 0, y: 0 };
-
-      const newTransform = {
-        ...currentTransform,
+      updateTransform(currentIndex, (old) => ({
+        ...old,
         x: e.clientX - startX,
         y: e.clientY - startY,
-      };
-
-      if (syncZoom) {
-        // 同步时所有图片都应用同样的位移
-        setTransforms(prev => prev.map(() => newTransform));
-      } else {
-        // 只移动当前图片
-        setTransforms(prev => {
-          const newTransforms = [...prev];
-          newTransforms[currentIndex] = newTransform;
-          return newTransforms;
-        });
-      }
+      }));
     };
 
     const handleMouseUp = () => {
