@@ -1,7 +1,7 @@
 {
   "name": "photo-compare",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -31,6 +31,5 @@
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
-  },
-  "description": "PhotoCompare 图片对比工具（1.0.1: 标注线宽视觉不变优化）"
+  }
 }
