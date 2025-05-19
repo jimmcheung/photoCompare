@@ -312,7 +312,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
   const BBOX_RADIUS = 4;
 
   const DELETE_BTN_RADIUS = 9;
-  const DELETE_BTN_MARGIN = 4;
+  const DELETE_BTN_MARGIN = 8;
   const DeleteSvgButton = ({cx, cy, onPointerUp}: {cx: number, cy: number, onPointerUp: (e: React.PointerEvent) => void}) => {
     const [hover, setHover] = useState(false);
     return (
@@ -323,8 +323,8 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
-        <circle cx={cx} cy={cy} r={DELETE_BTN_RADIUS} fill={hover ? '#007AFF' : '#fff'} stroke="#007AFF" strokeWidth={1.5} />
-        <path d={`M${cx-3},${cy-3} L${cx+3},${cy+3} M${cx-3},${cy+3} L${cx+3},${cy-3}`} stroke={hover ? '#fff' : '#007AFF'} strokeWidth={1.5} strokeLinecap="round"/>
+        <circle cx={cx} cy={cy} r={DELETE_BTN_RADIUS} fill={hover ? '#007AFF' : '#fff'} stroke="#007AFF" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        <path d={`M${cx-3},${cy-3} L${cx+3},${cy+3} M${cx-3},${cy+3} L${cx+3},${cy-3}`} stroke={hover ? '#fff' : '#007AFF'} strokeWidth={1.5} strokeLinecap="round" vectorEffect="non-scaling-stroke"/>
       </g>
     );
   };
@@ -592,6 +592,17 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
     );
   };
 
+  // 工具函数：精准测量文字宽度
+  function measureTextWidth(text: string, fontSize: number, fontFamily = 'system-ui, -apple-system, sans-serif'): number {
+    // 用函数属性存储 canvas
+    const fn = measureTextWidth as typeof measureTextWidth & { canvas?: HTMLCanvasElement };
+    if (!fn.canvas) fn.canvas = document.createElement('canvas');
+    const context = fn.canvas.getContext('2d');
+    if (!context) return 120;
+    context.font = `${fontSize}px ${fontFamily}`;
+    return context.measureText(text).width;
+  }
+
   if (images.length === 0) {
     // 当没有图片时，返回null，重置hasViewedImages放到useEffect
     return null;
@@ -679,18 +690,20 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               pointerEvents="all"
                               onPointerDown={e => { e.stopPropagation(); setDraggingAnn({ imgIdx: 0, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] }); }}
                             />
-                            <DeleteSvgButton
-                              cx={minX + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                              cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                              onPointerUp={e => {
-                                e.stopPropagation();
-                                if (syncZoomRef.current) {
-                                  images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                } else {
-                                  deleteAnnotation(images[0].id, ann.id);
-                                }
-                              }}
-                            />
+                            <g transform={`translate(${(minX + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN)*(transforms[0]?.scale || 1)}, ${(minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN)*(transforms[0]?.scale || 1)}) scale(${1/transforms[0]?.scale || 1})`}>
+                              <DeleteSvgButton
+                                cx={0}
+                                cy={0}
+                                onPointerUp={e => {
+                                  e.stopPropagation();
+                                  if (syncZoomRef.current) {
+                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
+                                  } else {
+                                    deleteAnnotation(images[0].id, ann.id);
+                                  }
+                                }}
+                              />
+                            </g>
                           </g>
                         )}
                       </g>
@@ -729,18 +742,20 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               pointerEvents="all"
                               onPointerDown={e => { e.stopPropagation(); setDraggingAnn({ imgIdx: 0, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] }); }}
                             />
-                            <DeleteSvgButton
-                              cx={minX + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                              cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                              onPointerUp={e => {
-                                e.stopPropagation();
-                                if (syncZoomRef.current) {
-                                  images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                } else {
-                                  deleteAnnotation(images[0].id, ann.id);
-                                }
-                              }}
-                            />
+                            <g transform={`translate(${(minX + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN)*(transforms[0]?.scale || 1)}, ${(minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN)*(transforms[0]?.scale || 1)}) scale(${1/transforms[0]?.scale || 1})`}>
+                              <DeleteSvgButton
+                                cx={0}
+                                cy={0}
+                                onPointerUp={e => {
+                                  e.stopPropagation();
+                                  if (syncZoomRef.current) {
+                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
+                                  } else {
+                                    deleteAnnotation(images[0].id, ann.id);
+                                  }
+                                }}
+                              />
+                            </g>
                           </g>
                         )}
                       </g>
@@ -786,18 +801,20 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               pointerEvents="all"
                               onPointerDown={e => { e.stopPropagation(); setDraggingAnn({ imgIdx: 0, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] }); }}
                             />
-                            <DeleteSvgButton
-                              cx={maxX + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                              cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                              onPointerUp={e => {
-                                e.stopPropagation();
-                                if (syncZoomRef.current) {
-                                  images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                } else {
-                                  deleteAnnotation(images[0].id, ann.id);
-                                }
-                              }}
-                            />
+                            <g transform={`translate(${(maxX + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN)*(transforms[0]?.scale || 1)}, ${(minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN)*(transforms[0]?.scale || 1)}) scale(${1/transforms[0]?.scale || 1})`}>
+                              <DeleteSvgButton
+                                cx={0}
+                                cy={0}
+                                onPointerUp={e => {
+                                  e.stopPropagation();
+                                  if (syncZoomRef.current) {
+                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
+                                  } else {
+                                    deleteAnnotation(images[0].id, ann.id);
+                                  }
+                                }}
+                              />
+                            </g>
                           </g>
                         )}
                       </g>
@@ -805,13 +822,15 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                   }
                   if (ann.type === 'text') {
                     const [tx, ty] = ann.points;
-                    // 计算文字实际宽度
-                    const textWidth = (ann.text?.length || 0) * (ann.fontSize || 18) * 0.96; // 0.96是一个经验系数，用于估算字符宽度
-                    const w = Math.max(120, textWidth + 16); // 最小宽度120px，加上一些padding
-                    const h = 40;
+                    // 精准测量文字宽度
+                    const textWidth = measureTextWidth(ann.text || '', ann.fontSize || 18);
+                    const w = Math.max(32, textWidth + 16); // 最小宽度32px，加padding
+                    const h = Math.max(ann.fontSize || 18, 32);
                     if (editingTextId === ann.id) {
                       return null;
                     }
+                    // 获取当前缩放比例
+                    const scale = transforms[0]?.scale || 1;
                     return (
                       <g key={ann.id}>
                         <text
@@ -849,23 +868,26 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                               strokeDasharray="4 4"
                               style={{filter:'drop-shadow(0 0 2px #007AFF88)'}}
                               pointerEvents="all"
+                              vectorEffect="non-scaling-stroke"
                               onPointerDown={e => { 
                                 e.stopPropagation(); 
                                 setDraggingAnn({ imgIdx: 0, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] });
                               }}
                             />
-                            <DeleteSvgButton
-                              cx={tx + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                              cy={ty - h/2 - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                              onPointerUp={e => {
-                                e.stopPropagation();
-                                if (syncZoomRef.current) {
-                                  images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                } else {
-                                  deleteAnnotation(images[0].id, ann.id);
-                                }
-                              }}
-                            />
+                            <g transform={`translate(${(tx + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN)*scale}, ${(ty - h/2 - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN)*scale})`}>
+                              <DeleteSvgButton
+                                cx={0}
+                                cy={0}
+                                onPointerUp={e => {
+                                  e.stopPropagation();
+                                  if (syncZoomRef.current) {
+                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
+                                  } else {
+                                    deleteAnnotation(images[0].id, ann.id);
+                                  }
+                                }}
+                              />
+                            </g>
                           </g>
                         )}
                       </g>
@@ -938,109 +960,19 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                   {/* 已有标注 */}
                   {(annotations[image.id] || []).map(ann => {
                     const isSelected = selectedAnnotationId[image.id] === ann.id;
+                    if (!isSelected) return null;
+                    // 只渲染选中的定界框和按钮
+                    let bbox = null;
                     if (ann.type === 'rect') {
                       const [x1, y1, x2, y2] = ann.points;
                       const minX = Math.min(x1, x2), minY = Math.min(y1, y2), w = Math.abs(x2-x1), h = Math.abs(y2-y1);
-                      return (
-                        <g key={ann.id}>
-                          <rect x={minX} y={minY} width={w} height={h} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none"
-                            onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(image.id, ann.id);
-                              // 拖动前保存撤销快照
-                              if (annotationTool === 'move') {
-                                if (syncZoomRef.current) {
-                                  images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
-                                } else {
-                                  useAnnotationStore.getState().pushUndo(image.id, annotations[image.id] || []);
-                                }
-                              }
-                              setDragStart({ x: e.clientX, y: e.clientY, annId: ann.id, imgIdx: index }); }}
-                          />
-                          {annotationTool === 'move' && isSelected && (
-                            <g>
-                              <rect 
-                                x={minX-BBOX_PAD} 
-                                y={minY-BBOX_PAD} 
-                                width={w+BBOX_PAD*2} 
-                                height={h+BBOX_PAD*2} 
-                                stroke="#007AFF" 
-                                strokeWidth={2} 
-                                fill="none" 
-                                rx={BBOX_RADIUS} 
-                                strokeDasharray="4 4"
-                                style={{filter:'drop-shadow(0 0 2px #007AFF88)'}} 
-                                pointerEvents="all"
-                                onPointerDown={e => { e.stopPropagation(); setDraggingAnn({ imgIdx: index, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] }); }}
-                              />
-                              <DeleteSvgButton
-                                cx={minX + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                                cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                                onPointerUp={e => {
-                                  e.stopPropagation();
-                                  if (syncZoomRef.current) {
-                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                  } else {
-                                    deleteAnnotation(image.id, ann.id);
-                                  }
-                                }}
-                              />
-                            </g>
-                          )}
-                        </g>
-                      );
-                    }
-                    if (ann.type === 'ellipse') {
+                      bbox = { x: minX, y: minY, w, h };
+                    } else if (ann.type === 'ellipse') {
                       const [x1, y1, x2, y2] = ann.points;
                       const minX = Math.min(x1, x2), minY = Math.min(y1, y2), w = Math.abs(x2-x1), h = Math.abs(y2-y1);
-                      return (
-                        <g key={ann.id}>
-                          <ellipse cx={(x1+x2)/2} cy={(y1+y2)/2} rx={w/2} ry={h/2} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none"
-                            onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(image.id, ann.id);
-                              // 拖动前保存撤销快照
-                              if (annotationTool === 'move') {
-                                if (syncZoomRef.current) {
-                                  images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
-                                } else {
-                                  useAnnotationStore.getState().pushUndo(image.id, annotations[image.id] || []);
-                                }
-                              }
-                              setDragStart({ x: e.clientX, y: e.clientY, annId: ann.id, imgIdx: index }); }}
-                          />
-                          {annotationTool === 'move' && isSelected && (
-                            <g>
-                              <rect 
-                                x={minX-BBOX_PAD} 
-                                y={minY-BBOX_PAD} 
-                                width={w+BBOX_PAD*2} 
-                                height={h+BBOX_PAD*2} 
-                                stroke="#007AFF" 
-                                strokeWidth={2} 
-                                fill="none" 
-                                rx={BBOX_RADIUS} 
-                                strokeDasharray="4 4"
-                                style={{filter:'drop-shadow(0 0 2px #007AFF88)'}} 
-                                pointerEvents="all"
-                                onPointerDown={e => { e.stopPropagation(); setDraggingAnn({ imgIdx: index, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] }); }}
-                              />
-                              <DeleteSvgButton
-                                cx={minX + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                                cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                                onPointerUp={e => {
-                                  e.stopPropagation();
-                                  if (syncZoomRef.current) {
-                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                  } else {
-                                    deleteAnnotation(image.id, ann.id);
-                                  }
-                                }}
-                              />
-                            </g>
-                          )}
-                        </g>
-                      );
-                    }
-                    if (ann.type === 'pen') {
+                      bbox = { x: minX, y: minY, w, h };
+                    } else if (ann.type === 'pen') {
                       const pts = ann.points;
-                      const d = pts.length >= 4 ? `M${pts[0]},${pts[1]} ` + pts.slice(2).map((v,i) => i%2===0?`L${pts[i+2]},${pts[i+3]}`:'').join(' ') : '';
                       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                       for (let i = 0; i < pts.length; i += 2) {
                         minX = Math.min(minX, pts[i]);
@@ -1048,122 +980,65 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                         maxX = Math.max(maxX, pts[i]);
                         maxY = Math.max(maxY, pts[i+1]);
                       }
-                      return (
-                        <g key={ann.id}>
-                          <path d={d} stroke={ann.color} strokeWidth={ann.strokeWidth} vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round" strokeLinecap="round"
-                            onPointerDown={e => { e.stopPropagation(); setSelectedAnnotationId(image.id, ann.id);
-                              // 拖动前保存撤销快照
-                              if (annotationTool === 'move') {
-                                if (syncZoomRef.current) {
-                                  images.forEach(img => useAnnotationStore.getState().pushUndo(img.id, annotations[img.id] || []));
-                                } else {
-                                  useAnnotationStore.getState().pushUndo(image.id, annotations[image.id] || []);
-                                }
-                              }
-                              setDragStart({ x: e.clientX, y: e.clientY, annId: ann.id, imgIdx: index }); }}
-                          />
-                          {annotationTool === 'move' && isSelected && (
-                            <g>
-                              <rect 
-                                x={minX-BBOX_PAD} 
-                                y={minY-BBOX_PAD} 
-                                width={maxX-minX+BBOX_PAD*2} 
-                                height={maxY-minY+BBOX_PAD*2} 
-                                stroke="#007AFF" 
-                                strokeWidth={2} 
-                                fill="none" 
-                                rx={BBOX_RADIUS} 
-                                strokeDasharray="4 4"
-                                style={{filter:'drop-shadow(0 0 2px #007AFF88)'}} 
-                                pointerEvents="all"
-                                onPointerDown={e => { e.stopPropagation(); setDraggingAnn({ imgIdx: index, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] }); }}
-                              />
-                              <DeleteSvgButton
-                                cx={maxX + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                                cy={minY - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                                onPointerUp={e => {
-                                  e.stopPropagation();
-                                  if (syncZoomRef.current) {
-                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                  } else {
-                                    deleteAnnotation(image.id, ann.id);
-                                  }
-                                }}
-                              />
-                            </g>
-                          )}
-                        </g>
-                      );
-                    }
-                    if (ann.type === 'text') {
+                      bbox = { x: minX, y: minY, w: maxX-minX, h: maxY-minY };
+                    } else if (ann.type === 'text') {
                       const [tx, ty] = ann.points;
-                      // 计算文字实际宽度
-                      const textWidth = (ann.text?.length || 0) * (ann.fontSize || 18) * 0.96; // 0.96是一个经验系数，用于估算字符宽度
-                      const w = Math.max(120, textWidth + 16); // 最小宽度120px，加上一些padding
-                      const h = 40;
-                      if (editingTextId === ann.id) {
-                        return null;
-                      }
-                      return (
-                        <g key={ann.id}>
-                          <text
-                            x={tx}
-                            y={ty}
-                            fontSize={ann.fontSize || 18}
-                            fill={ann.color}
-                            textAnchor="start"
-                            alignmentBaseline="middle"
-                            style={{ 
-                              cursor: annotationTool === 'move' ? 'move' : 'text', 
-                              userSelect: 'none', 
-                              ...(isSelected ? { filter: 'drop-shadow(0 0 2px #007AFF88)' } : {})
-                            }}
-                            onDoubleClick={() => setEditingTextId?.(ann.id)}
-                            onPointerDown={e => { 
-                              e.stopPropagation(); 
-                              if (annotationTool === 'move') {
-                                setSelectedAnnotationId(image.id, ann.id);
-                                setDraggingAnn({ imgIdx: index, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] });
-                              }
-                            }}
-                          >{ann.text}</text>
-                          {annotationTool === 'move' && isSelected && (
-                            <g>
-                              <rect 
-                                x={tx-BBOX_PAD} 
-                                y={ty-h/2-BBOX_PAD} 
-                                width={w+BBOX_PAD*2} 
-                                height={h+BBOX_PAD*2} 
-                                stroke="#007AFF" 
-                                strokeWidth={2} 
-                                fill="none" 
-                                rx={BBOX_RADIUS} 
-                                strokeDasharray="4 4"
-                                style={{filter:'drop-shadow(0 0 2px #007AFF88)'}}
-                                pointerEvents="all"
-                                onPointerDown={e => { 
-                                  e.stopPropagation(); 
-                                  setDraggingAnn({ imgIdx: index, annId: ann.id, start: [e.clientX, e.clientY], last: [e.clientX, e.clientY] });
-                                }}
-                              />
-                              <DeleteSvgButton
-                                cx={tx + w + BBOX_PAD + DELETE_BTN_RADIUS + DELETE_BTN_MARGIN}
-                                cy={ty - h/2 - BBOX_PAD - DELETE_BTN_RADIUS - DELETE_BTN_MARGIN}
-                                onPointerUp={e => {
-                                  e.stopPropagation();
-                                  if (syncZoomRef.current) {
-                                    images.forEach(img => deleteAnnotation(img.id, ann.id));
-                                  } else {
-                                    deleteAnnotation(image.id, ann.id);
-                                  }
-                                }}
-                              />
-                            </g>
-                          )}
-                        </g>
-                      );
+                      const textWidth = measureTextWidth(ann.text || '', ann.fontSize || 18);
+                      const w = Math.max(32, textWidth + 16);
+                      const h = Math.max(ann.fontSize || 18, 32);
+                      bbox = { x: tx, y: ty-h/2, w, h };
                     }
-                    return null;
+                    if (!bbox) return null;
+                    // 计算定界框在屏幕上的实际位置
+                    const scale = transforms[index]?.scale || 1;
+                    const offsetX = transforms[index]?.x || 0;
+                    const offsetY = transforms[index]?.y || 0;
+                    const left = bbox.x * scale + offsetX;
+                    const top = bbox.y * scale + offsetY;
+                    const width = bbox.w * scale;
+                    const height = bbox.h * scale;
+                    const margin = 8;
+                    return (
+                      <div key={ann.id + '-bbox'}
+                        style={{
+                          position: 'absolute',
+                          left: left - BBOX_PAD,
+                          top: top - BBOX_PAD,
+                          width: width + BBOX_PAD*2,
+                          height: height + BBOX_PAD*2,
+                          pointerEvents: 'none',
+                          zIndex: 10,
+                        }}
+                      >
+                        <svg width={width + BBOX_PAD*2} height={height + BBOX_PAD*2} style={{position:'absolute',left:0,top:0,pointerEvents:'none'}}>
+                          <rect x={0} y={0} width={width + BBOX_PAD*2} height={height + BBOX_PAD*2} stroke="#007AFF" strokeWidth={2} fill="none" rx={BBOX_RADIUS} strokeDasharray="4 4" style={{filter:'drop-shadow(0 0 2px #007AFF88)'}} vectorEffect="non-scaling-stroke" />
+                        </svg>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: width + BBOX_PAD*2 + margin,
+                            top: -margin,
+                            width: DELETE_BTN_RADIUS*2,
+                            height: DELETE_BTN_RADIUS*2,
+                            zIndex: 11,
+                            pointerEvents: 'auto',
+                          }}
+                          onPointerUp={e => {
+                            e.stopPropagation();
+                            if (syncZoomRef.current) {
+                              images.forEach(img => deleteAnnotation(img.id, ann.id));
+                            } else {
+                              deleteAnnotation(image.id, ann.id);
+                            }
+                          }}
+                        >
+                          <svg width={DELETE_BTN_RADIUS*2} height={DELETE_BTN_RADIUS*2} style={{display:'block'}}>
+                            <circle cx={DELETE_BTN_RADIUS} cy={DELETE_BTN_RADIUS} r={DELETE_BTN_RADIUS} fill="#fff" stroke="#007AFF" strokeWidth={1.5} />
+                            <path d={`M${DELETE_BTN_RADIUS-3},${DELETE_BTN_RADIUS-3} L${DELETE_BTN_RADIUS+3},${DELETE_BTN_RADIUS+3} M${DELETE_BTN_RADIUS-3},${DELETE_BTN_RADIUS+3} L${DELETE_BTN_RADIUS+3},${DELETE_BTN_RADIUS-3}`} stroke="#007AFF" strokeWidth={1.5} strokeLinecap="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                    );
                   })}
                   {/* 正在绘制 */}
                   {drawing && (
