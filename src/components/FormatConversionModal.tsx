@@ -74,12 +74,12 @@ const FormatConversionModal: React.FC<FormatConversionModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div 
-        className={`w-full max-w-lg rounded-3xl shadow-lg shadow-black/10 border border-gray-200 px-7 py-6 backdrop-blur-lg text-sm transition-all duration-300 select-none pointer-events-auto z-[2000] 
-          ${darkMode ? 'bg-gray-900/80 text-gray-100 border-gray-700' : 'bg-white/80 text-gray-700 border-gray-200'}`}
+        className={`w-full max-w-lg rounded-xl shadow-2xl 
+          ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-800'}`}
       >
-        <div className="">
+        <div className="p-6">
           <h2 className="text-xl font-semibold mb-4">HEIC/HEIF格式图片需要进行转换</h2>
-          <p className="mb-4">
+          <p className="text-sm mb-4">
             HEIC/HEIF格式需要转换为JPG或PNG后才能正常显示，而且前端无法识别EXIF信息。你可以选择转换的格式和质量：
           </p>
           <div className="flex items-center gap-6 mb-4">
