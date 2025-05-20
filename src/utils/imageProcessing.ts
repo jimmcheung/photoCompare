@@ -1,8 +1,30 @@
 import exifr from 'exifr';
 import { ImageInfo } from '../stores/imageStore';
+import { isHeicFormat as checkHeicFormat, convertHeic } from './heicHandler';
+
+/**
+ * 检查文件是否是HEIC/HEIF格式
+ */
+const isHeicFormatByName = (file: File): boolean => {
+  const fileName = file.name.toLowerCase();
+  return fileName.endsWith('.heic') || fileName.endsWith('.heif');
+};
+
+/**
+ * 将HEIC/HEIF文件转换为JPEG
+ */
+const convertHeicToJpeg = async (file: File): Promise<Blob> => {
+  try {
+    return await convertHeic(file, 'image/jpeg', 0.8);
+  } catch (error) {
+    console.error('HEIC/HEIF转换失败:', error);
+    throw new Error('HEIC/HEIF格式转换失败');
+  }
+};
 
 /**
  * 处理图片文件，提取EXIF信息
+ * 注意: 现在特殊格式如HEIF和RAW会在上传前通过格式转换器处理
  */
 export const processImageFile = async (file: File): Promise<ImageInfo> => {
   try {
@@ -22,13 +44,19 @@ export const processImageFile = async (file: File): Promise<ImageInfo> => {
         resolve({width: 0, height: 0});
       };
       img.src = url;
-      setTimeout(() => resolve({width: 0, height: 0}), 3000); // 超时处理
+      // 超时处理
+      setTimeout(() => resolve({width: 0, height: 0}), 3000); 
     });
     
-    // 提取EXIF数据
-    const exif = await exifr.parse(file, {
+    // 尝试提取EXIF数据
+    let exif: any = {};
+    try {
+      exif = await exifr.parse(file, {
       pick: ['Make', 'Model', 'LensModel', 'FocalLength', 'FNumber', 'ExposureTime', 'ISO', 'DateTimeOriginal'],
     }) || {};
+    } catch (exifError) {
+      console.warn('EXIF提取警告:', exifError);
+    }
     
     // 构建图像信息对象
     return {
@@ -51,25 +79,6 @@ export const processImageFile = async (file: File): Promise<ImageInfo> => {
     };
   } catch (error) {
     console.error('图像处理失败:', error);
-    
-    // 创建一个简单的错误对象
-    return {
-      id: `error-${Date.now()}-${file.name}`,
-      file,
-      url: '',
-      name: file.name,
-      exif: {
-        FileName: file.name,
-        Resolution: '0 × 0',
-        Make: 'Error',
-        Model: 'Error',
-        LensModel: 'Error',
-        FocalLength: 0,
-        FNumber: 0,
-        ExposureTime: '0',
-        ISO: 0,
-        DateTimeOriginal: new Date().toISOString(),
-      }
-    };
+    throw error;
   }
 }; 

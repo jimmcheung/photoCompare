@@ -19,7 +19,7 @@ const ExifPanel: React.FC<Props> = ({ imageInfo }) => {
     img.src = imageInfo.url;
   }, [imageInfo.url]);
 
-  // 过滤出需要显示的 EXIF 信息，排除 Unknown 值
+  // 过滤出需要显示的 EXIF 信息，排除无效值
   const visibleExif = Object.entries({
     ...imageInfo.exif,
     Resolution: resolution,
@@ -27,12 +27,15 @@ const ExifPanel: React.FC<Props> = ({ imageInfo }) => {
     ([key, value]) => 
       // 首先检查该项是否在设置中启用
       exifSettings[key as keyof typeof exifSettings] && 
-      // 然后检查值是否有效（不为 Unknown 且不为 0）
+      // 过滤无效内容
+      value !== undefined &&
+      value !== null &&
+      value !== '' &&
       value !== 'Unknown' &&
-      // 对于数值类型，排除 0 值
-      (typeof value === 'number' ? value !== 0 : true) &&
-      // 确保值不为空
-      value !== ''
+      value !== 'NaN' &&
+      value !== 'Invalid Date' &&
+      !(typeof value === 'number' && (isNaN(value) || value === 0)) &&
+      !(typeof value === 'string' && (value === '0' || value.trim() === '0' || value.trim() === '0s'))
   );
 
   if (visibleExif.length === 0) return null;

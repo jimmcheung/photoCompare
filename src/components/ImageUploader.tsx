@@ -1,14 +1,36 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useImageStore } from '../stores/imageStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { processImageFile } from '../utils/imageProcessing';
+import FormatConversionModal, { FileToConvert } from './FormatConversionModal';
+import { convertHeif, needsConversion } from '../utils/formatConverter';
+
+const NORMAL_IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|bmp)$/i;
+const SPECIAL_IMAGE_EXT = /\.(heic|heif)$/i;
 
 const ImageUploader: React.FC = () => {
   const { darkMode, demoMode } = useSettingsStore();
   const { addImages, clearImages, removeImage, images, addImage } = useImageStore();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleFiles = useCallback(async (files: FileList, shouldClear: boolean = true) => {
+  // 格式转换状态
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [filesToConvert, setFilesToConvert] = useState<FileToConvert[]>([]);
+  const [filesToProcess, setFilesToProcess] = useState<File[]>([]);
+  const [isConverting, setIsConverting] = useState(false);
+  const [shouldClearImages, setShouldClearImages] = useState(true);
+  
+  // 新增两个状态保存用户选择的格式和质量
+  const [outputFormat, setOutputFormat] = useState<'image/jpeg' | 'image/png'>('image/jpeg');
+  const [quality, setQuality] = useState(0.85);
+  
+  // 添加清理缓存的效果
+  useEffect(() => {
+    // 组件卸载时清理RAW处理相关缓存（已废弃，无需处理）
+  }, []);
+  
+  // 处理普通图片文件（无需转换）
+  const processNormalFiles = useCallback(async (files: File[], shouldClear: boolean = true) => {
     if (!files.length) return;
 
     if (shouldClear && images.length > 0) {
@@ -18,11 +40,7 @@ const ImageUploader: React.FC = () => {
     setIsProcessing(true);
     try {
       const processedImages = await Promise.all(
-        Array.from(files)
-          .filter(file => file.type.startsWith('image/') || 
-                          file.name.toLowerCase().endsWith('.heic') || 
-                          file.name.toLowerCase().endsWith('.heif'))
-          .map(processImageFile)
+        files.map(processImageFile)
       );
       addImages(processedImages);
     } catch (error) {
@@ -32,6 +50,124 @@ const ImageUploader: React.FC = () => {
       setIsProcessing(false);
     }
   }, [addImages, clearImages, images.length]);
+
+  // 处理包括特殊格式在内的所有文件
+  const handleFiles = useCallback(async (files: FileList, shouldClear: boolean = true) => {
+    if (!files.length) return;
+    const filesToConvert: FileToConvert[] = [];
+    const normalFiles: File[] = [];
+    for (const file of Array.from(files)) {
+      const lowerName = file.name.toLowerCase();
+      if (NORMAL_IMAGE_EXT.test(lowerName)) {
+        normalFiles.push(file);
+      } else if (SPECIAL_IMAGE_EXT.test(lowerName)) {
+        // 检查是否需要转换
+        try {
+          const { needsConversion: requiresConversion, type } = await needsConversion(file);
+          if (requiresConversion && type) {
+            filesToConvert.push({ file, type, status: 'pending' });
+          } else {
+            normalFiles.push(file);
+          }
+        } catch (error) {
+          console.warn(`检查文件格式失败: ${file.name}`, error);
+          // 不再push type: 'raw'，只log
+        }
+      } else {
+        // 其它未知格式，忽略或可提示不支持
+      }
+    }
+    if (filesToConvert.length > 0) {
+      setFilesToConvert(filesToConvert);
+      setFilesToProcess(normalFiles);
+      setShouldClearImages(shouldClear);
+      setOutputFormat('image/jpeg');
+      setQuality(0.85);
+      setShowConversionModal(true);
+    } else if (normalFiles.length > 0) {
+      processNormalFiles(normalFiles, shouldClear);
+    }
+  }, [processNormalFiles]);
+  
+  // 执行文件格式转换
+  const performConversion = useCallback(async () => {
+    if (filesToConvert.length === 0) return;
+    
+    setIsConverting(true);
+    const convertedFiles: File[] = [];
+    
+    // 更新文件状态的辅助函数
+    const updateFileStatus = (index: number, updates: Partial<FileToConvert>) => {
+      setFilesToConvert(prev => 
+        prev.map((file, i) => i === index ? { ...file, ...updates } : file)
+      );
+    };
+    
+    // 逐个处理文件
+    for (let i = 0; i < filesToConvert.length; i++) {
+      const fileToConvert = filesToConvert[i];
+      
+      try {
+        // 更新状态为转换中
+        updateFileStatus(i, { status: 'converting', progress: 0 });
+        
+        if (fileToConvert.type === 'heif') {
+          // 转换HEIF/HEIC格式
+          const blob = await convertHeif(fileToConvert.file, outputFormat, quality, (progress: number) => {
+            updateFileStatus(i, { progress });
+          });
+          
+          if (blob) {
+            const ext = outputFormat === 'image/png' ? '.png' : '.jpg';
+            const convertedFile = new File(
+              [blob],
+              fileToConvert.file.name.replace(/\.(heic|heif)$/i, ext),
+              { type: outputFormat }
+            );
+            convertedFiles.push(convertedFile);
+            updateFileStatus(i, { status: 'success' });
+          } else {
+            updateFileStatus(i, { status: 'error', error: '转换失败' });
+          }
+        }
+      } catch (error) {
+        console.error(`转换文件失败:`, error);
+        updateFileStatus(i, { 
+          status: 'error', 
+          error: error instanceof Error ? error.message : '未知错误' 
+        });
+      }
+    }
+    
+    // 所有文件处理完毕后，处理转换成功的文件和普通文件
+    const allFiles = [...convertedFiles, ...filesToProcess];
+    if (allFiles.length > 0) {
+      await processNormalFiles(allFiles, shouldClearImages);
+    }
+    
+    // 保持转换模态框打开，直到用户点击关闭
+  }, [filesToConvert, filesToProcess, shouldClearImages, processNormalFiles, outputFormat, quality]);
+  
+  // 取消转换
+  const cancelConversion = useCallback(() => {
+    // 如果有普通文件，仍然处理它们
+    if (filesToProcess.length > 0) {
+      processNormalFiles(filesToProcess, shouldClearImages);
+    }
+    
+    // 关闭转换弹窗
+    setShowConversionModal(false);
+    setFilesToConvert([]);
+    setFilesToProcess([]);
+  }, [filesToProcess, shouldClearImages, processNormalFiles]);
+  
+  // 关闭转换弹窗
+  const closeConversionModal = useCallback(() => {
+    setShowConversionModal(false);
+    setFilesToConvert([]);
+    setFilesToProcess([]);
+    setIsConverting(false);
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -70,7 +206,6 @@ const ImageUploader: React.FC = () => {
               input.multiple = true;
               input.onchange = (e) => {
                 if (e.target instanceof HTMLInputElement && e.target.files) {
-                  clearImages();
                   handleFiles(e.target.files, true);
                 }
               };
@@ -88,6 +223,7 @@ const ImageUploader: React.FC = () => {
               const input = document.createElement('input');
               input.type = 'file';
               input.accept = 'image/*,.heic,.heif';
+              input.multiple = true;
               input.onchange = (e) => {
                 if (e.target instanceof HTMLInputElement && e.target.files) {
                   handleFiles(e.target.files, false);
@@ -149,28 +285,30 @@ const ImageUploader: React.FC = () => {
                     />
                   </svg>
                 </button>
-                <div className="absolute bottom-0 left-0 right-0 p-3 text-sm text-white bg-gradient-to-t from-black/70 to-transparent">
-                  <div className="space-y-1">
-                    {image.exif.Make !== 'Unknown' && image.exif.Model !== 'Unknown' && (
-                      <p>{image.exif.Make} {image.exif.Model}</p>
-                    )}
-                    {image.exif.LensModel !== 'Unknown' && (
-                      <p>{image.exif.LensModel}</p>
-                    )}
-                    {image.exif.FocalLength > 0 && (
-                      <p>{image.exif.FocalLength}mm</p>
-                    )}
-                    {image.exif.FNumber > 0 && (
-                      <p>f/{image.exif.FNumber}</p>
-                    )}
-                    {image.exif.ISO > 0 && (
-                      <p>{image.exif.ISO}</p>
-                    )}
-                    {image.exif.ExposureTime !== '0' && (
-                      <p>{image.exif.ExposureTime}s</p>
-                    )}
+                {image.exif && (
+                  <div className="absolute bottom-0 left-0 right-0 p-3 text-sm text-white bg-gradient-to-t from-black/70 to-transparent">
+                    <div className="space-y-1">
+                      {image.exif.Make !== 'Unknown' && image.exif.Model !== 'Unknown' && (
+                        <p>{image.exif.Make} {image.exif.Model}</p>
+                      )}
+                      {image.exif.LensModel !== 'Unknown' && (
+                        <p>{image.exif.LensModel}</p>
+                      )}
+                      {image.exif.FocalLength > 0 && (
+                        <p>{image.exif.FocalLength}mm</p>
+                      )}
+                      {image.exif.FNumber > 0 && (
+                        <p>f/{image.exif.FNumber}</p>
+                      )}
+                      {image.exif.ISO > 0 && (
+                        <p>{image.exif.ISO}</p>
+                      )}
+                      {image.exif.ExposureTime !== '0' && (
+                        <p>{image.exif.ExposureTime}s</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </div>
@@ -180,6 +318,7 @@ const ImageUploader: React.FC = () => {
   );
 
   return (
+    <>
     <div className={`flex flex-col items-center justify-center min-h-screen ${
       darkMode ? 'bg-black' : 'bg-gray-100'
     } ${demoMode ? 'demo-mode' : 'pt-12'}`}>
@@ -267,6 +406,21 @@ const ImageUploader: React.FC = () => {
         )}
       </div>
     </div>
+      
+      {/* 格式转换确认弹窗 */}
+      <FormatConversionModal
+        isOpen={showConversionModal}
+        files={filesToConvert}
+        onClose={closeConversionModal}
+        onConfirm={(format, q) => {
+          setOutputFormat(format);
+          setQuality(q);
+          setTimeout(() => performConversion(), 0);
+        }}
+        onCancel={cancelConversion}
+        isConverting={isConverting}
+      />
+    </>
   );
 };
 

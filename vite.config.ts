@@ -1,13 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'path'
 
 export default defineConfig({
+  base: '/photoCompare/',
   plugins: [react()],
-  server: {
-    port: 3000,
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
   },
   optimizeDeps: {
-    include: ['react-zoom-pan-pinch', 'exifr']
+    exclude: ['dcraw'],
+    include: ['heic-to']
   },
-  base: '/photoCompare/'
+  build: {
+    rollupOptions: {
+      external: ['dcraw'],
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          heic: ['heic-to']
+        }
+      }
+    }
+  },
+  server: {
+    hmr: true,
+  }
 }) 

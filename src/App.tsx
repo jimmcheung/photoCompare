@@ -428,6 +428,17 @@ const App: React.FC = () => {
                     <span>GitHub 仓库</span>
                   </a>
                   <a 
+                    href="/heic-test.html" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-sm text-sky-600 dark:text-sky-400 hover:underline"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M5 8.5c0-1.5 1-2.5 2.5-2.5H9c1.5 0 2.5 1 2.5 2.5v7c0 1.5-1 2.5-2.5 2.5H7.5C6 18 5 17 5 15.5v-7zm7 0c0-1.5 1-2.5 2.5-2.5H16c1.5 0 2.5 1 2.5 2.5v7c0 1.5-1 2.5-2.5 2.5h-1.5c-1.5 0-2.5-1-2.5-2.5v-7z" />
+                    </svg>
+                    <span>HEIC格式测试工具</span>
+                  </a>
+                  <a 
                     href="https://space.bilibili.com/13818699" 
                     target="_blank" 
                     rel="noopener noreferrer"
