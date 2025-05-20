@@ -22,6 +22,8 @@ interface SettingsStore extends Settings {
   visibleExifFields: string[];
   demoMode: boolean;
   exifSettings: ExifSettings;
+  showZoomControls: boolean;
+  showExifInfo: boolean;
   toggleDarkMode: () => void;
   toggleSyncZoom: () => void;
   toggleSyncDraw: () => void;
@@ -30,6 +32,8 @@ interface SettingsStore extends Settings {
   toggleExifSetting: (key: keyof ExifSettings) => void;
   toggleExifField: (field: string) => void;
   toggleAllExifSettings: (value: boolean) => void;
+  toggleShowZoomControls: () => void;
+  toggleShowExifInfo: () => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
@@ -51,6 +55,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     ISO: false,
     DateTimeOriginal: false,
   },
+  showZoomControls: false,
+  showExifInfo: true,
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
   toggleSyncZoom: () => set((state) => ({ syncZoom: !state.syncZoom })),
   toggleSyncDraw: () => set((state) => ({ syncDraw: !state.syncDraw })),
@@ -74,4 +80,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     });
     return { exifSettings: newSettings };
   }),
+  toggleShowZoomControls: () => set((state) => ({ showZoomControls: !state.showZoomControls })),
+  toggleShowExifInfo: () => set((state) => ({ showExifInfo: !state.showExifInfo })),
 })); 

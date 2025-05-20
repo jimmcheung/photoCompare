@@ -17,7 +17,7 @@ interface Props {
 }
 
 const ImageViewer: React.FC<Props> = ({ images = [] }) => {
-  const { darkMode, syncZoom, demoMode } = useSettingsStore();
+  const { darkMode, syncZoom, demoMode, showZoomControls } = useSettingsStore();
   const { removeImage, addImages } = useImageStore();
   const {
     isAnnotateMode, annotationTool, annotationColor, annotationStrokeWidth, annotationFontSize, annotations, addAnnotation, setAnnotations, undo, redo,
@@ -592,6 +592,61 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
     );
   };
 
+  // 新增：每张图片的缩放按钮选中状态（-1表示无选中）
+  const [zoomButtonActive, setZoomButtonActive] = useState<number[]>([]);
+
+  // 缩放比例按钮组样式和顺序调整
+  const zoomLevels = [1, 2, 5];
+
+  // 初始化 zoomButtonActive
+  useEffect(() => {
+    setZoomButtonActive(Array(images.length).fill(-1));
+  }, [images.length]);
+
+  // 缩放按钮点击
+  const handleZoomButtonClick = (imgIdx: number, levelIdx: number) => {
+    setZoomButtonActive(prev => {
+      const newArr = [...prev];
+      // 再次点击已选中则取消
+      if (newArr[imgIdx] === levelIdx) {
+        newArr[imgIdx] = -1;
+      } else {
+        newArr[imgIdx] = levelIdx;
+      }
+      return newArr;
+    });
+    setTransforms(prev => {
+      const newArr = [...prev];
+      if (zoomButtonActive[imgIdx] === levelIdx) {
+        // 取消选中，恢复1x
+        if (syncZoomRef.current) {
+          // 同步模式下，所有图片都恢复1x
+          return newArr.map(() => ({ scale: 1, x: 0, y: 0 }));
+        } else {
+          newArr[imgIdx] = { ...newArr[imgIdx], scale: 1 };
+        }
+      } else {
+        if (syncZoomRef.current) {
+          // 同步模式下，所有图片都同步到新的缩放级别
+          return newArr.map(() => ({ scale: zoomLevels[levelIdx], x: 0, y: 0 }));
+        } else {
+          newArr[imgIdx] = { ...newArr[imgIdx], scale: zoomLevels[levelIdx] };
+        }
+      }
+      return newArr;
+    });
+  };
+
+  // 监听手动缩放（滚轮/拖动）自动取消按钮高亮
+  useEffect(() => {
+    setZoomButtonActive(prev => prev.map((active, idx) => {
+      if (active === -1) return -1;
+      const scale = transforms[idx]?.scale || 1;
+      if (Math.abs(scale - zoomLevels[active]) > 0.01) return -1;
+      return active;
+    }));
+  }, [transforms]);
+
   if (images.length === 0) {
     // 当没有图片时，返回null，重置hasViewedImages放到useEffect
     return null;
@@ -600,7 +655,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center">
       {images.length === 1 ? (
-        <div className="w-full max-w-[800px] h-[80vh] px-4 flex items-center justify-center">
+        <div className="w-full md:w-[90%] h-[80vh] px-4 flex items-center justify-center">
           <div 
             key={images[0].id} 
             className="relative w-full h-full flex items-center justify-center"
@@ -611,6 +666,41 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                 darkMode ? 'bg-black' : 'bg-white'
               } rounded-lg shadow-lg overflow-hidden relative group`}
             >
+              {/* 缩放按钮组和比例显示（移到exif信息上方） */}
+              {showZoomControls && (
+                <div className="absolute left-1/2 transform -translate-x-1/2 bottom-48 z-30 flex flex-row items-end space-x-3 select-none mb-4">
+                  {zoomLevels.map((z, zi) => {
+                    const scale = transforms[0]?.scale || 1;
+                    let active = false;
+                    if (zi === 0 && scale >= 1 && scale < 2) active = true;
+                    if (zi === 1 && scale >= 2 && scale < 5) active = true;
+                    if (zi === 2 && scale >= 5) active = true;
+                    // 只保留1位小数，整数不显示小数点
+                    const scaleText = Number.isInteger(scale) ? `${scale}x` : `${scale.toFixed(1)}x`;
+                    return (
+                      <button
+                        key={z}
+                        onClick={() => handleZoomButtonClick(0, zi)}
+                        className={`w-9 h-9 flex items-center justify-center rounded-full font-semibold transition-all duration-200 shadow-md
+                          border border-gray-300 dark:border-gray-700
+                          bg-white/80 dark:bg-gray-900/80 backdrop-blur-md
+                          hover:bg-sky-100/80 dark:hover:bg-gray-800/90
+                          focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-50
+                        `}
+                        style={{ minWidth: 36, minHeight: 36, maxWidth: 36, maxHeight: 36, outline: 'none', position: 'relative', transform: active ? 'scale(1.22)' : 'scale(1)' }}
+                        title={`缩放到${z}x`}
+                      >
+                        {/* 按钮内显示实时缩放比例或倍率 */}
+                        {active ? (
+                          <span className="text-gray-700 dark:text-gray-100 font-medium whitespace-nowrap text-[13px] leading-none drop-shadow-sm">{scaleText}</span>
+                        ) : (
+                          <span className="text-gray-700 dark:text-gray-200 font-medium whitespace-nowrap text-[13px] leading-none drop-shadow-sm">{z}x</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {/* 回退：恢复原img标签和transform缩放方式 */}
               <img
                 ref={el => imageRefs.current[0] = el}
@@ -894,7 +984,7 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 w-full h-full items-center justify-center px-4 max-w-screen-2xl mx-auto" style={{
+        <div className="grid gap-4 w-full md:w-[90%] h-full items-center justify-center px-4 mx-auto" style={{
           gridTemplateColumns: `repeat(${images.length}, minmax(0, 1fr))`
         }}>
           {images.map((image, index) => (
@@ -905,6 +995,39 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
                   darkMode ? 'bg-black' : 'bg-white'
                 } rounded-lg shadow-lg overflow-hidden relative group`}
               >
+                {/* 缩放按钮组和比例显示（移到exif信息上方） */}
+                {showZoomControls && (
+                  <div className="absolute left-1/2 transform -translate-x-1/2 bottom-48 z-30 flex flex-row items-end space-x-3 select-none mb-4">
+                    {zoomLevels.map((z, zi) => {
+                      const scale = transforms[index]?.scale || 1;
+                      let active = false;
+                      if (zi === 0 && scale >= 1 && scale < 2) active = true;
+                      if (zi === 1 && scale >= 2 && scale < 5) active = true;
+                      if (zi === 2 && scale >= 5) active = true;
+                      const scaleText = Number.isInteger(scale) ? `${scale}x` : `${scale.toFixed(1)}x`;
+                      return (
+                        <button
+                          key={z}
+                          onClick={() => handleZoomButtonClick(index, zi)}
+                          className={`w-9 h-9 flex items-center justify-center rounded-full font-semibold transition-all duration-200 shadow-md
+                            border border-gray-300 dark:border-gray-700
+                            bg-white/80 dark:bg-gray-900/80 backdrop-blur-md
+                            hover:bg-sky-100/80 dark:hover:bg-gray-800/90
+                            focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-50
+                          `}
+                          style={{ minWidth: 36, minHeight: 36, maxWidth: 36, maxHeight: 36, outline: 'none', position: 'relative', transform: active ? 'scale(1.22)' : 'scale(1)' }}
+                          title={`缩放到${z}x`}
+                        >
+                          {active ? (
+                            <span className="text-gray-700 dark:text-gray-100 font-medium whitespace-nowrap text-[13px] leading-none drop-shadow-sm">{scaleText}</span>
+                          ) : (
+                            <span className="text-gray-700 dark:text-gray-200 font-medium whitespace-nowrap text-[13px] leading-none drop-shadow-sm">{z}x</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <img
                   ref={el => imageRefs.current[index] = el}
                   src={image.url}

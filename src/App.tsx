@@ -112,7 +112,7 @@ const MobileSidebar: React.FC<{
                 <span>@Jim超爱玩</span>
               </a>
               <span>•</span>
-              <span className="text-sm opacity-60">v1.1.0</span>
+              <span className="text-sm opacity-60">v1.1.1</span>
             </div>
           </div>
         </div>
@@ -133,8 +133,10 @@ const App: React.FC = () => {
   // 设置深色模式的 HTML 类
   useEffect(() => {
     if (darkMode) {
-      document.documentElement.classList.add('dark-mode');
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add('dark-mode'); // 保留原有类以兼容现有样式
     } else {
+      document.documentElement.classList.remove('dark');
       document.documentElement.classList.remove('dark-mode');
     }
   }, [darkMode]);
@@ -355,7 +357,7 @@ const App: React.FC = () => {
               <span className="text-sm opacity-60">•</span>
               <span className="text-sm opacity-60">© {new Date().getFullYear()}</span>
               <span className="text-sm opacity-60">•</span>
-              <span className="text-sm opacity-60">v1.1.0</span>
+              <span className="text-sm opacity-60">v1.1.1</span>
               <span className="text-sm opacity-60">•</span>
               <button
                 className="text-sm text-sky-500 hover:underline focus:outline-none focus:underline ml-2"
@@ -398,7 +400,7 @@ const App: React.FC = () => {
               
               <div className="mb-4">
                 <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">版本信息</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">当前版本: v1.0.2</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">当前版本: v1.1.1</p>
               </div>
               
               <div className="mb-4">

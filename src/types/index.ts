@@ -29,4 +29,6 @@ export interface Settings {
   syncDraw: boolean;
   presentationMode: boolean;
   visibleExifFields: string[];
+  showZoomControls: boolean;
+  showExifInfo: boolean;
 } 

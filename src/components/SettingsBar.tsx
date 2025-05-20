@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useImageStore, ImageInfo } from '../stores/imageStore';
 import { processImageFile } from '../utils/imageProcessing';
+import ReactDOM from 'react-dom';
 
 interface ExifSettingsPanelProps {
   isOpen: boolean;
@@ -48,9 +49,26 @@ const Tooltip: React.FC<TooltipProps> = ({ text, children }) => {
 };
 
 const ExifSettingsPanel: React.FC<ExifSettingsPanelProps> = ({ isOpen, onClose }) => {
-  const { exifSettings, toggleExifSetting, toggleAllExifSettings } = useSettingsStore();
+  const { exifSettings, toggleExifSetting, toggleAllExifSettings, showZoomControls, toggleShowZoomControls, darkMode, showExifInfo, toggleShowExifInfo } = useSettingsStore();
 
-  if (!isOpen) return null;
+  // 动画控制
+  const [shouldRender, setShouldRender] = React.useState(isOpen);
+  const [animating, setAnimating] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setAnimating(false); // 先重置
+      // 用 requestAnimationFrame 保证下一帧再设为true，动画每次都能从头播放
+      const raf = requestAnimationFrame(() => setAnimating(true));
+      return () => cancelAnimationFrame(raf);
+    } else if (shouldRender) {
+      setAnimating(false);
+      const timer = setTimeout(() => setShouldRender(false), 320);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+  if (!shouldRender) return null;
 
   const displayNames: { [key: string]: string } = {
     FileName: '文件名',
@@ -65,62 +83,150 @@ const ExifSettingsPanel: React.FC<ExifSettingsPanelProps> = ({ isOpen, onClose }
     DateTimeOriginal: '拍摄时间'
   };
 
-  return (
-    <div className="absolute right-0 top-12 bg-white dark:bg-gray-900 rounded-lg shadow-lg p-3 min-w-[180px] z-20">
+  // 主要信息：强调样式
+  const primaryKeys = ['Make', 'Model', 'FocalLength', 'FNumber', 'ExposureTime', 'ISO'];
+  // 次要信息：次要样式
+  const secondaryKeys = ['LensModel', 'FileName', 'Resolution', 'DateTimeOriginal'];
+
+  // 全选状态
+  const allChecked = Object.values(exifSettings).every(Boolean);
+  const primaryChecked = primaryKeys.every(key => exifSettings[key as keyof typeof exifSettings]);
+  const secondaryChecked = secondaryKeys.every(key => exifSettings[key as keyof typeof exifSettings]);
+
+  return ReactDOM.createPortal(
+    <div
+      className={
+        `fixed right-8 top-20 min-w-[260px] max-w-[90vw] md:max-w-[400px] max-h-[80vh] overflow-y-auto rounded-3xl px-7 py-4 backdrop-blur-lg text-sm shadow-lg shadow-black/10 transition-all duration-300 scrollbar-hide pointer-events-auto select-none z-[2000] 
+        ${darkMode ? 'bg-gray-900/95 text-gray-100 border border-gray-700' : 'bg-white/80 text-gray-700 border border-gray-200'}`
+      }
+      style={{
+        opacity: animating ? 1 : 0,
+        transform: animating ? 'scale(1) translateY(0px)' : 'scale(0.95) translateY(40px)',
+        transition: 'opacity 0.32s cubic-bezier(.4,0,.2,1), transform 0.32s cubic-bezier(.4,0,.2,1)',
+        pointerEvents: shouldRender ? 'auto' : 'none',
+      }}
+    >
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100">显示设置</h3>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
           <span className="text-lg">×</span>
         </button>
       </div>
-      
-      <div className="flex space-x-2 mb-2 border-b border-gray-200 dark:border-gray-700 pb-2">
-        <button 
-          onClick={() => toggleAllExifSettings(true)}
-          className="px-2 py-0.5 text-xs rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:hover:bg-sky-800/50 transition-colors"
-        >
-          全选
-        </button>
-        <button 
-          onClick={() => toggleAllExifSettings(false)}
-          className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-        >
-          取消全选
-        </button>
+      {/* EXIF信息标题和总开关 */}
+      <div className="flex items-center justify-between mt-1 mb-2">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-100">EXIF信息</span>
+        <label className="relative inline-flex items-center cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showExifInfo}
+            onChange={toggleShowExifInfo}
+            className="sr-only peer"
+          />
+          <div className={`w-11 h-6 bg-gray-300 dark:bg-gray-800 rounded-full peer-focus:ring-2 peer-focus:ring-sky-400 peer-focus:ring-opacity-50 transition-colors duration-200
+            ${showExifInfo ? 'bg-sky-500' : darkMode ? 'bg-gray-800' : 'bg-gray-300'}`}
+          >
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200
+              ${showExifInfo ? 'translate-x-5' : 'translate-x-0'}`}
+            />
+          </div>
+        </label>
       </div>
-      
-      <div className="space-y-1">
-        {Object.entries(exifSettings)
-          .filter(([key]) => ['Make', 'Model', 'FocalLength', 'FNumber', 'ExposureTime', 'ISO'].includes(key))
-          .map(([key, value]) => (
-            <label key={key} className="flex items-center space-x-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-0.5 rounded-md transition-colors">
+      {/* 主要/次要分栏并列，互不影响 */}
+      {showExifInfo && (
+        <div className="flex flex-row gap-3 mb-2">
+          {/* 主要 */}
+          <div className="flex-1 min-w-[120px]">
+            <div className="flex items-center mb-1">
               <input
                 type="checkbox"
-                checked={value}
-                onChange={() => toggleExifSetting(key as keyof typeof exifSettings)}
-                className="form-checkbox h-3.5 w-3.5 text-sky-500 rounded border-gray-300 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-sky-500"
+                checked={primaryChecked}
+                onChange={() => {
+                  if (primaryChecked) {
+                    primaryKeys.forEach(key => {
+                      if (exifSettings[key as keyof typeof exifSettings]) toggleExifSetting(key as keyof typeof exifSettings);
+                    });
+                  } else {
+                    primaryKeys.forEach(key => {
+                      if (!exifSettings[key as keyof typeof exifSettings]) toggleExifSetting(key as keyof typeof exifSettings);
+                    });
+                  }
+                }}
+                className="form-checkbox h-3.5 w-3.5 text-sky-500 rounded border-gray-300 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-sky-500 mr-1"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">{displayNames[key] || key}</span>
-            </label>
-          ))}
-        
-        <div className="border-t border-gray-200 dark:border-gray-700 my-1 pt-1">
-          {Object.entries(exifSettings)
-            .filter(([key]) => !['Make', 'Model', 'FocalLength', 'FNumber', 'ExposureTime', 'ISO'].includes(key))
-            .map(([key, value]) => (
-              <label key={key} className="flex items-center space-x-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-0.5 rounded-md transition-colors">
-                <input
-                  type="checkbox"
-                  checked={value}
-                  onChange={() => toggleExifSetting(key as keyof typeof exifSettings)}
-                  className="form-checkbox h-3.5 w-3.5 text-sky-500 rounded border-gray-300 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-sky-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{displayNames[key] || key}</span>
-              </label>
-            ))}
+              <span className="text-xs text-gray-500 dark:text-gray-300">主要</span>
+            </div>
+            <div className="space-y-1">
+              {primaryKeys.map(key => (
+                <label key={key} className="flex items-center space-x-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={exifSettings[key as keyof typeof exifSettings]}
+                    onChange={() => toggleExifSetting(key as keyof typeof exifSettings)}
+                    className="form-checkbox h-3.5 w-3.5 text-sky-500 rounded border-gray-300 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-sky-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-100">{displayNames[key] || key}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          {/* 次要 */}
+          <div className="flex-1 min-w-[120px]">
+            <div className="flex items-center mb-1">
+              <input
+                type="checkbox"
+                checked={secondaryChecked}
+                onChange={() => {
+                  if (secondaryChecked) {
+                    secondaryKeys.forEach(key => {
+                      if (exifSettings[key as keyof typeof exifSettings]) toggleExifSetting(key as keyof typeof exifSettings);
+                    });
+                  } else {
+                    secondaryKeys.forEach(key => {
+                      if (!exifSettings[key as keyof typeof exifSettings]) toggleExifSetting(key as keyof typeof exifSettings);
+                    });
+                  }
+                }}
+                className="form-checkbox h-3.5 w-3.5 text-sky-500 rounded border-gray-300 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-sky-500 mr-1"
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-300">次要</span>
+            </div>
+            <div className="space-y-1">
+              {secondaryKeys.map(key => (
+                <label key={key} className="flex items-center space-x-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={exifSettings[key as keyof typeof exifSettings]}
+                    onChange={() => toggleExifSetting(key as keyof typeof exifSettings)}
+                    className="form-checkbox h-3.5 w-3.5 text-sky-500 rounded border-gray-300 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-sky-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-100">{displayNames[key] || key}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
+      )}
+      <div className="border-t border-gray-200 dark:border-gray-700 my-3" />
+      <div className="flex items-center justify-between mt-1 mb-2">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-100">缩放倍数显示</span>
+        <label className="relative inline-flex items-center cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showZoomControls}
+            onChange={toggleShowZoomControls}
+            className="sr-only peer"
+          />
+          <div className={`w-11 h-6 bg-gray-300 dark:bg-gray-800 rounded-full peer-focus:ring-2 peer-focus:ring-sky-400 peer-focus:ring-opacity-50 transition-colors duration-200
+            ${showZoomControls ? 'bg-sky-500' : darkMode ? 'bg-gray-800' : 'bg-gray-300'}`}
+          >
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200
+              ${showZoomControls ? 'translate-x-5' : 'translate-x-0'}`}
+            />
+          </div>
+        </label>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -150,11 +256,10 @@ const SettingsBar: React.FC = () => {
         <Tooltip text="显示设置">
           <button
             onClick={() => setShowExifSettings(!showExifSettings)}
-            className={`p-3 rounded-full backdrop-blur-md transition-all duration-200 ${
-              darkMode 
-                ? 'bg-gray-900 hover:bg-gray-800 text-white' 
-                : 'bg-sky-500/10 hover:bg-sky-500/20 text-gray-900'
-            } font-medium flex items-center`}
+            className={`p-3 rounded-full backdrop-blur-md transition-all duration-200 border font-medium flex items-center
+              ${darkMode 
+                ? 'bg-gray-900 hover:bg-gray-800 text-white border-gray-700' 
+                : 'bg-sky-500/10 hover:bg-sky-500/20 text-gray-900 border-gray-200'}`}
           >
             <svg 
               className="w-5 h-5" 
@@ -181,7 +286,7 @@ const SettingsBar: React.FC = () => {
               ? 'bg-sky-600 hover:bg-sky-700 text-white' 
               : darkMode 
                 ? 'bg-gray-900 hover:bg-gray-800 text-white' 
-                : 'bg-sky-500/10 hover:bg-sky-500/20 text-gray-900'
+                : 'bg-sky-500/10 hover:bg-sky-500/20 text-gray-900 dark:text-white'
           } font-medium desktop-only`}
         >
           <svg 
