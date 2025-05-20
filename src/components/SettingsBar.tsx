@@ -3,6 +3,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useImageStore, ImageInfo } from '../stores/imageStore';
 import { processImageFile } from '../utils/imageProcessing';
 import ReactDOM from 'react-dom';
+import domtoimage from 'dom-to-image';
 
 interface ExifSettingsPanelProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ interface TooltipProps {
   children: React.ReactNode;
 }
 
-// 自定义工具提示组件
+// 工具提示组件
 const Tooltip: React.FC<TooltipProps> = ({ text, children }) => {
   const [isVisible, setIsVisible] = useState(false);
   const { darkMode } = useSettingsStore();
@@ -235,6 +236,7 @@ const SettingsBar: React.FC = () => {
   const { images, addImages, clearImages } = useImageStore();
   const [showExifSettings, setShowExifSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -245,6 +247,77 @@ const SettingsBar: React.FC = () => {
     addImages(processedImages);
   };
 
+  // 使用dom-to-image实现截图功能
+  const captureScreenshot = async () => {
+    try {
+      setIsCapturing(true);
+      
+      // 临时添加演示模式样式，隐藏控制按钮
+      document.body.classList.add('demo-mode-active');
+      
+      // 等待样式应用完成
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // 获取主内容区域并生成截图
+      const mainContent = document.querySelector('main') as HTMLElement;
+      if (!mainContent) {
+        throw new Error('找不到主要内容区域');
+      }
+      
+      // 生成高质量截图
+      const blob = await domtoimage.toBlob(mainContent, {
+        quality: 0.95,
+        bgcolor: darkMode ? '#000000' : '#f9fafb',
+        height: mainContent.scrollHeight,
+        width: mainContent.scrollWidth,
+        style: {
+          'transform': 'none',
+          'transform-origin': 'center',
+          'zoom': '1'
+        }
+      });
+      
+      // 生成文件名: 照片对比+相机品牌型号+时间
+      let filename = '照片对比';
+      
+      if (images.length > 0) {
+        const firstImage = images[0];
+        const make = firstImage.exif?.Make || '';
+        const model = firstImage.exif?.Model || '';
+        if (make || model) {
+          filename += '_' + (make + model).trim().replace(/\s+/g, '-');
+        }
+      }
+      
+      // 添加时间戳
+      const now = new Date();
+      const timeString = now.getFullYear() + 
+                        ('0' + (now.getMonth() + 1)).slice(-2) + 
+                        ('0' + now.getDate()).slice(-2) + 
+                        ('0' + now.getHours()).slice(-2) + 
+                        ('0' + now.getMinutes()).slice(-2);
+      filename += '_' + timeString + '.png';
+      
+      // 下载图片
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      // 恢复正常显示
+      document.body.classList.remove('demo-mode-active');
+      setIsCapturing(false);
+      
+    } catch (error) {
+      console.error('截图失败:', error);
+      document.body.classList.remove('demo-mode-active');
+      setIsCapturing(false);
+      alert('截图失败，请重试');
+    }
+  };
+
   // 如果没有图片，不显示任何按钮
   if (images.length === 0) {
     return null;
@@ -252,6 +325,34 @@ const SettingsBar: React.FC = () => {
 
   return (
     <div className="flex items-center space-x-4 setting-bar">
+      {/* 截图按钮 */}
+      <div className="relative">
+        <Tooltip text="截图">
+          <button
+            onClick={captureScreenshot}
+            disabled={isCapturing}
+            className={`p-3 rounded-full backdrop-blur-md transition-all duration-200 border font-medium flex items-center
+              ${darkMode 
+                ? 'bg-gray-900 hover:bg-gray-800 text-white border-gray-700' 
+                : 'bg-sky-500/10 hover:bg-sky-500/20 text-gray-900 border-gray-200'}
+              ${isCapturing ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <svg 
+              className="w-5 h-5" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </button>
+        </Tooltip>
+      </div>
+
       <div className="relative">
         <Tooltip text="显示设置">
           <button

@@ -623,14 +623,14 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
           // 同步模式下，所有图片都恢复1x
           return newArr.map(() => ({ scale: 1, x: 0, y: 0 }));
         } else {
-          newArr[imgIdx] = { ...newArr[imgIdx], scale: 1 };
+        newArr[imgIdx] = { ...newArr[imgIdx], scale: 1 };
         }
       } else {
         if (syncZoomRef.current) {
           // 同步模式下，所有图片都同步到新的缩放级别
           return newArr.map(() => ({ scale: zoomLevels[levelIdx], x: 0, y: 0 }));
-        } else {
-          newArr[imgIdx] = { ...newArr[imgIdx], scale: zoomLevels[levelIdx] };
+      } else {
+        newArr[imgIdx] = { ...newArr[imgIdx], scale: zoomLevels[levelIdx] };
         }
       }
       return newArr;
