@@ -64,9 +64,13 @@ const ExifSettingsPanel: React.FC<ExifSettingsPanelProps> = ({ isOpen, onClose }
       const raf = requestAnimationFrame(() => setAnimating(true));
       return () => cancelAnimationFrame(raf);
     } else if (shouldRender) {
-      setAnimating(false);
+      // 关闭时也使用requestAnimationFrame确保动画流畅
+      const raf = requestAnimationFrame(() => setAnimating(false));
       const timer = setTimeout(() => setShouldRender(false), 320);
-      return () => clearTimeout(timer);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
     }
   }, [isOpen]);
   if (!shouldRender) return null;

@@ -227,9 +227,9 @@ export const convertHeic = async (
     }
   } catch (error) {
     console.error('HEIC转换失败:', error);
-    if (typeof progressCallback === 'function') {
-      progressCallback(100);
-    }
+                if (typeof progressCallback === 'function') {
+                  progressCallback(100);
+                }
     throw error;
   }
 }; 

@@ -31,7 +31,7 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, errorMessa
  * 新的通用转换函数，支持格式和质量
  */
 export const convertHeif = async (
-  file: File,
+  file: File, 
   outputFormat: 'image/jpeg' | 'image/png' = 'image/jpeg',
   quality: number = 0.85,
   progressCallback?: (progress: number) => void
@@ -39,7 +39,7 @@ export const convertHeif = async (
   try {
     if (progressCallback) {
       progressCallback(10);
-    }
+        }
     const blob = await convertHeic(file, outputFormat, quality, progressCallback);
     if (progressCallback) {
       progressCallback(100);

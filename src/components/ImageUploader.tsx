@@ -64,7 +64,7 @@ const ImageUploader: React.FC = () => {
         // 检查是否需要转换
         try {
           const { needsConversion: requiresConversion, type } = await needsConversion(file);
-          if (requiresConversion && type) {
+      if (requiresConversion && type) {
             filesToConvert.push({ file, type, status: 'pending' });
           } else {
             normalFiles.push(file);
@@ -286,28 +286,28 @@ const ImageUploader: React.FC = () => {
                   </svg>
                 </button>
                 {image.exif && (
-                  <div className="absolute bottom-0 left-0 right-0 p-3 text-sm text-white bg-gradient-to-t from-black/70 to-transparent">
-                    <div className="space-y-1">
-                      {image.exif.Make !== 'Unknown' && image.exif.Model !== 'Unknown' && (
-                        <p>{image.exif.Make} {image.exif.Model}</p>
-                      )}
-                      {image.exif.LensModel !== 'Unknown' && (
-                        <p>{image.exif.LensModel}</p>
-                      )}
-                      {image.exif.FocalLength > 0 && (
-                        <p>{image.exif.FocalLength}mm</p>
-                      )}
-                      {image.exif.FNumber > 0 && (
-                        <p>f/{image.exif.FNumber}</p>
-                      )}
-                      {image.exif.ISO > 0 && (
-                        <p>{image.exif.ISO}</p>
-                      )}
-                      {image.exif.ExposureTime !== '0' && (
-                        <p>{image.exif.ExposureTime}s</p>
-                      )}
-                    </div>
+                <div className="absolute bottom-0 left-0 right-0 p-3 text-sm text-white bg-gradient-to-t from-black/70 to-transparent">
+                  <div className="space-y-1">
+                    {image.exif.Make !== 'Unknown' && image.exif.Model !== 'Unknown' && (
+                      <p>{image.exif.Make} {image.exif.Model}</p>
+                    )}
+                    {image.exif.LensModel !== 'Unknown' && (
+                      <p>{image.exif.LensModel}</p>
+                    )}
+                    {image.exif.FocalLength > 0 && (
+                      <p>{image.exif.FocalLength}mm</p>
+                    )}
+                    {image.exif.FNumber > 0 && (
+                      <p>f/{image.exif.FNumber}</p>
+                    )}
+                    {image.exif.ISO > 0 && (
+                      <p>{image.exif.ISO}</p>
+                    )}
+                    {image.exif.ExposureTime !== '0' && (
+                      <p>{image.exif.ExposureTime}s</p>
+                    )}
                   </div>
+                </div>
                 )}
               </>
             )}

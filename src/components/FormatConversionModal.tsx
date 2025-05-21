@@ -30,7 +30,7 @@ const FormatConversionModal: React.FC<FormatConversionModalProps> = ({
   
   const [outputFormat, setOutputFormat] = useState<'image/jpeg' | 'image/png'>('image/jpeg');
   const [quality, setQuality] = useState(0.85);
-
+  
   if (!isOpen) return null;
 
   // 获取文件类型的中文描述

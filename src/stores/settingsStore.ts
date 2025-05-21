@@ -40,51 +40,51 @@ interface SettingsStore extends Settings {
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
-      darkMode: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches,
-      syncZoom: true,
-      syncDraw: false,
-      presentationMode: false,
-      visibleExifFields: ['Make', 'Model', 'ISO', 'FNumber', 'ExposureTime', 'FocalLength', 'LensModel', 'DateTimeOriginal'],
-      demoMode: false,
-      exifSettings: {
-        FileName: false,
-        Resolution: true,
-        Make: true,
-        Model: true,
-        LensModel: false,
-        FocalLength: true,
-        FNumber: true,
-        ExposureTime: true,
-        ISO: false,
-        DateTimeOriginal: false,
-      },
-      showZoomControls: false,
-      showExifInfo: true,
-      toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
-      toggleSyncZoom: () => set((state) => ({ syncZoom: !state.syncZoom })),
-      toggleSyncDraw: () => set((state) => ({ syncDraw: !state.syncDraw })),
-      togglePresentationMode: () => set((state) => ({ presentationMode: !state.presentationMode })),
-      toggleDemoMode: () => set((state) => ({ demoMode: !state.demoMode })),
-      toggleExifSetting: (key) => set((state) => ({
-        exifSettings: {
-          ...state.exifSettings,
-          [key]: !state.exifSettings[key],
-        },
-      })),
-      toggleExifField: (field) => set((state) => ({
-        visibleExifFields: state.visibleExifFields.includes(field)
-          ? state.visibleExifFields.filter(f => f !== field)
-          : [...state.visibleExifFields, field]
-      })),
-      toggleAllExifSettings: (value) => set((state) => {
-        const newSettings = { ...state.exifSettings };
-        Object.keys(newSettings).forEach(key => {
-          newSettings[key as keyof ExifSettings] = value;
-        });
-        return { exifSettings: newSettings };
-      }),
-      toggleShowZoomControls: () => set((state) => ({ showZoomControls: !state.showZoomControls })),
-      toggleShowExifInfo: () => set((state) => ({ showExifInfo: !state.showExifInfo })),
+  darkMode: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches,
+  syncZoom: true,
+  syncDraw: false,
+  presentationMode: false,
+  visibleExifFields: ['Make', 'Model', 'ISO', 'FNumber', 'ExposureTime', 'FocalLength', 'LensModel', 'DateTimeOriginal'],
+  demoMode: false,
+  exifSettings: {
+    FileName: false,
+    Resolution: true,
+    Make: true,
+    Model: true,
+    LensModel: false,
+    FocalLength: true,
+    FNumber: true,
+    ExposureTime: true,
+    ISO: false,
+    DateTimeOriginal: false,
+  },
+  showZoomControls: false,
+  showExifInfo: true,
+  toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+  toggleSyncZoom: () => set((state) => ({ syncZoom: !state.syncZoom })),
+  toggleSyncDraw: () => set((state) => ({ syncDraw: !state.syncDraw })),
+  togglePresentationMode: () => set((state) => ({ presentationMode: !state.presentationMode })),
+  toggleDemoMode: () => set((state) => ({ demoMode: !state.demoMode })),
+  toggleExifSetting: (key) => set((state) => ({
+    exifSettings: {
+      ...state.exifSettings,
+      [key]: !state.exifSettings[key],
+    },
+  })),
+  toggleExifField: (field) => set((state) => ({
+    visibleExifFields: state.visibleExifFields.includes(field)
+      ? state.visibleExifFields.filter(f => f !== field)
+      : [...state.visibleExifFields, field]
+  })),
+  toggleAllExifSettings: (value) => set((state) => {
+    const newSettings = { ...state.exifSettings };
+    Object.keys(newSettings).forEach(key => {
+      newSettings[key as keyof ExifSettings] = value;
+    });
+    return { exifSettings: newSettings };
+  }),
+  toggleShowZoomControls: () => set((state) => ({ showZoomControls: !state.showZoomControls })),
+  toggleShowExifInfo: () => set((state) => ({ showExifInfo: !state.showExifInfo })),
     }),
     {
       name: 'photo-compare-settings',
