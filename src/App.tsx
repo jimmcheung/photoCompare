@@ -114,7 +114,7 @@ const MobileSidebar: React.FC<{
                 <span>@Jim超爱玩</span>
               </a>
               <span>•</span>
-              <span className="text-sm opacity-60">v1.1.1</span>
+              <span className="text-sm opacity-60">v1.1.8</span>
             </div>
           </div>
         </div>
@@ -408,7 +408,7 @@ const App: React.FC = () => {
               <span className="text-sm opacity-60">•</span>
               <span className="text-sm opacity-60">© {new Date().getFullYear()}</span>
               <span className="text-sm opacity-60">•</span>
-              <span className="text-sm opacity-60">v1.1.1</span>
+              <span className="text-sm opacity-60">v1.1.8</span>
               <span className="text-sm opacity-60">•</span>
               <button
                 className="text-sm text-sky-500 hover:underline focus:outline-none focus:underline ml-2"
@@ -451,7 +451,7 @@ const App: React.FC = () => {
               
               <div className="mb-4">
                 <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">版本信息</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">当前版本: v1.1.1</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">当前版本: v1.1.8</p>
               </div>
               
               <div className="mb-4">
@@ -531,6 +531,15 @@ const App: React.FC = () => {
 
         {/* 关键帧面板 */}
         {showKeyframePanel && <KeyframePanel />}
+
+        {/* 鸣谢 */}
+        <div className="mt-4">
+          <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">鸣谢</h3>
+          <a href="https://space.bilibili.com/96625571" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 text-sm text-sky-600 dark:text-sky-400 hover:underline">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+            熊熊Bearie
+          </a>
+        </div>
       </div>
     </div>
   );
