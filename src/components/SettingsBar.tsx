@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useImageStore, ImageInfo } from '../stores/imageStore';
 import { processImageFile } from '../utils/imageProcessing';
@@ -241,6 +241,8 @@ const SettingsBar: React.FC = () => {
   const [showExifSettings, setShowExifSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsPanelRef = useRef<HTMLDivElement>(null);
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -322,6 +324,20 @@ const SettingsBar: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (!showSettings) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        settingsPanelRef.current &&
+        !settingsPanelRef.current.contains(e.target as Node)
+      ) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSettings]);
+
   // 如果没有图片，不显示任何按钮
   if (images.length === 0) {
     return null;
@@ -360,7 +376,7 @@ const SettingsBar: React.FC = () => {
       <div className="relative">
         <Tooltip text="显示设置">
           <button
-            onClick={() => setShowExifSettings(!showExifSettings)}
+            onClick={() => setShowSettings(v => !v)}
             className={`p-3 rounded-full backdrop-blur-md transition-all duration-200 border font-medium flex items-center
               ${darkMode 
                 ? 'bg-gray-900 hover:bg-gray-800 text-white border-gray-700' 
@@ -380,7 +396,15 @@ const SettingsBar: React.FC = () => {
             </svg>
           </button>
         </Tooltip>
-        <ExifSettingsPanel isOpen={showExifSettings} onClose={() => setShowExifSettings(false)} />
+        {showSettings && (
+          <div
+            ref={settingsPanelRef}
+            style={{position: 'absolute', right: 0, top: '100%', zIndex: 2000}}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <ExifSettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
+          </div>
+        )}
       </div>
 
       <Tooltip text="演示模式">

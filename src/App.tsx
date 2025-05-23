@@ -10,6 +10,8 @@ import './styles/utils.css';
 import placeholderQRCode from '/placeholder-qrcode.jpeg';
 import { useAnnotationStore } from './stores/annotationStore';
 import AnnotationToolbar from './components/AnnotationToolbar';
+import KeyframePanel from './components/KeyframePanel';
+import { useKeyframeStore } from './stores/keyframeStore';
 
 // 移动端侧边栏组件
 const MobileSidebar: React.FC<{
@@ -129,6 +131,7 @@ const App: React.FC = () => {
   const [showInfo, setShowInfo] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAnnotateMode, setAnnotateMode, setToolbarVisible } = useAnnotationStore();
+  const { enabled: keyframeEnabled, setEnabled: setKeyframeEnabled } = useKeyframeStore();
 
   // 设置深色模式的 HTML 类
   useEffect(() => {
@@ -187,6 +190,21 @@ const App: React.FC = () => {
   useEffect(() => {
     setToolbarVisible(isAnnotateMode);
   }, [isAnnotateMode, setToolbarVisible]);
+
+  // 工具栏互斥逻辑
+  useEffect(() => {
+    if (keyframeEnabled && isAnnotateMode) {
+      setAnnotateMode(false);
+    }
+  }, [keyframeEnabled]);
+  useEffect(() => {
+    if (isAnnotateMode && keyframeEnabled) {
+      setKeyframeEnabled(false);
+    }
+  }, [isAnnotateMode]);
+
+  // 关键帧面板显示条件：开关为true且非演示模式
+  const showKeyframePanel = keyframeEnabled && !demoMode;
 
   return (
     <div className={`h-screen overflow-hidden ${darkMode ? 'bg-black' : 'bg-gray-50'}`}>
@@ -315,6 +333,39 @@ const App: React.FC = () => {
                       peer-focus:ring-2 peer-focus:ring-sky-400 peer-focus:ring-opacity-50`}
                     >
                       <span className="sr-only">标注开关</span>
+                    </div>
+                  </label>
+                </div>
+                {/* 关键帧开关（独立按钮） */}
+                <div className={`px-4 py-1.5 rounded-full backdrop-blur-md transition-all duration-200 ml-2 ${
+                  keyframeEnabled
+                    ? 'bg-sky-600 text-white' 
+                    : darkMode 
+                      ? 'bg-gray-900 text-white' 
+                      : 'bg-sky-500/10 text-gray-900'
+                } flex items-center desktop-only`}>
+                  <span className={`text-sm font-medium mr-3`}>关键帧</span>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={keyframeEnabled}
+                      onChange={e => setKeyframeEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className={`relative w-14 h-7 rounded-full transition-all duration-200 
+                      ${keyframeEnabled 
+                        ? 'bg-sky-500' 
+                        : darkMode 
+                          ? 'bg-gray-800' 
+                          : 'bg-gray-300'} 
+                      cursor-pointer
+                      after:content-[''] after:absolute after:top-1 after:left-1 
+                      after:bg-white after:rounded-full after:h-5 after:w-5 
+                      after:shadow-md after:transition-all
+                      ${keyframeEnabled ? 'after:translate-x-7' : 'after:translate-x-0'}
+                      peer-focus:ring-2 peer-focus:ring-sky-400 peer-focus:ring-opacity-50`}
+                    >
+                      <span className="sr-only">关键帧开关</span>
                     </div>
                   </label>
                 </div>
@@ -477,6 +528,9 @@ const App: React.FC = () => {
           toggleSyncZoom={toggleSyncZoom}
           images={images}
         />
+
+        {/* 关键帧面板 */}
+        {showKeyframePanel && <KeyframePanel />}
       </div>
     </div>
   );

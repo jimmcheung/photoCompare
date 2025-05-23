@@ -5,6 +5,8 @@ import { ImageInfo, useImageStore } from '../stores/imageStore';
 import { processImageFile } from '../utils/imageProcessing';
 import { useAnnotationStore, AnnotationType } from '../stores/annotationStore';
 import ReactDOM from 'react-dom';
+import { useKeyframeStore } from '../stores/keyframeStore';
+import type { Keyframe } from '../types/keyframe';
 
 interface Transform {
   scale: number;
@@ -646,6 +648,141 @@ const ImageViewer: React.FC<Props> = ({ images = [] }) => {
       return active;
     }));
   }, [transforms]);
+
+  const {
+    enabled: keyframeEnabled, keyframes, currentIdx, setKeyframe, setCurrentIdx, playing, setPlaying,
+    frameDuration, transitionDuration, transitionEasing
+  } = useKeyframeStore();
+
+  // 单图模式关键帧逻辑
+  useEffect(() => {
+    if (!keyframeEnabled || images.length !== 1) return;
+    const imgIdx = 0;
+    const kf: Keyframe = { scale: transforms[imgIdx]?.scale || 1, offsetX: transforms[imgIdx]?.x || 0, offsetY: transforms[imgIdx]?.y || 0 };
+    setKeyframe(currentIdx, kf);
+    // eslint-disable-next-line
+  }, [transforms[0]?.scale, transforms[0]?.x, transforms[0]?.y, keyframeEnabled, currentIdx, images.length]);
+
+  // 单图模式动画
+  React.useEffect(() => {
+    if (!keyframeEnabled || images.length !== 1) return;
+    const imgIdx = 0;
+    const target = keyframes[currentIdx];
+    if (!target) return;
+    let frame: number;
+    let step = 0;
+    const duration = transitionDuration || 400;
+    const start = { scale: transforms[imgIdx]?.scale || 1, x: transforms[imgIdx]?.x || 0, y: transforms[imgIdx]?.y || 0 };
+    const end = { scale: target.scale, x: target.offsetX, y: target.offsetY };
+    const getEase = (t: number) => {
+      if (transitionEasing === 'linear') return t;
+      if (transitionEasing === 'ease-in') return t * t;
+      // 默认 ease-in-out
+      return t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    };
+    const animate = () => {
+      step += 16;
+      const t = Math.min(step / duration, 1);
+      const ease = getEase(t);
+      const scale = start.scale + (end.scale - start.scale) * ease;
+      const x = start.x + (end.x - start.x) * ease;
+      const y = start.y + (end.y - start.y) * ease;
+      setTransforms(prev => {
+        const arr = [...prev];
+        arr[imgIdx] = { scale, x, y };
+        return arr;
+      });
+      if (t < 1) frame = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line
+  }, [currentIdx, keyframeEnabled, images.length, transitionDuration, transitionEasing]);
+
+  // 多图模式关键帧逻辑
+  useEffect(() => {
+    if (!keyframeEnabled || images.length <= 1) return;
+    images.forEach((img, index) => {
+      const kf: Keyframe = { scale: transforms[index]?.scale || 1, offsetX: transforms[index]?.x || 0, offsetY: transforms[index]?.y || 0 };
+      setKeyframe(currentIdx, kf);
+    });
+    // eslint-disable-next-line
+  }, [transforms, keyframeEnabled, currentIdx, images.length]);
+
+  // 多图模式动画
+  React.useEffect(() => {
+    if (!keyframeEnabled || images.length <= 1) return;
+    images.forEach((img, index) => {
+      const target = keyframes[currentIdx];
+      if (!target) return;
+      let frame: number;
+      let step = 0;
+      const duration = transitionDuration || 400;
+      const start = { scale: transforms[index]?.scale || 1, x: transforms[index]?.x || 0, y: transforms[index]?.y || 0 };
+      const end = { scale: target.scale, x: target.offsetX, y: target.offsetY };
+      const getEase = (t: number) => {
+        if (transitionEasing === 'linear') return t;
+        if (transitionEasing === 'ease-in') return t * t;
+        // 默认 ease-in-out
+        return t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+      };
+      const animate = () => {
+        step += 16;
+        const t = Math.min(step / duration, 1);
+        const ease = getEase(t);
+        const scale = start.scale + (end.scale - start.scale) * ease;
+        const x = start.x + (end.x - start.x) * ease;
+        const y = start.y + (end.y - start.y) * ease;
+        setTransforms(prev => {
+          const arr = [...prev];
+          arr[index] = { scale, x, y };
+          return arr;
+        });
+        if (t < 1) frame = requestAnimationFrame(animate);
+      };
+      animate();
+      return () => cancelAnimationFrame(frame);
+    });
+    // eslint-disable-next-line
+  }, [currentIdx, keyframeEnabled, images.length, transitionDuration, transitionEasing]);
+
+  // 播放功能
+  useEffect(() => {
+    if (!keyframeEnabled || !playing) return;
+    let idx = currentIdx;
+    let timer: NodeJS.Timeout;
+    const next = () => {
+      idx = (idx + 1) % 5;
+      setCurrentIdx(idx);
+      if (idx !== 4) {
+        timer = setTimeout(next, frameDuration || 1200);
+      } else {
+        setPlaying(false);
+      }
+    };
+    timer = setTimeout(next, frameDuration || 1200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line
+  }, [playing, keyframeEnabled, frameDuration]);
+
+  // 快捷键支持
+  React.useEffect(() => {
+    if (!keyframeEnabled) return;
+    const handle = (e: KeyboardEvent) => {
+      if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
+      if (e.code.startsWith('Digit')) {
+        const n = Number(e.code.replace('Digit', ''));
+        if (n >= 1 && n <= 5) setCurrentIdx(n-1);
+      }
+      if (e.code === 'Space') {
+        setPlaying(!playing);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+    // eslint-disable-next-line
+  }, [keyframeEnabled, playing]);
 
   if (images.length === 0) {
     // 当没有图片时，返回null，重置hasViewedImages放到useEffect
